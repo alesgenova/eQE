@@ -24,6 +24,7 @@ subroutine force_corr (forcescc)
   USE ions_base,            ONLY : nat, ntyp => nsp, ityp, tau
   USE cell_base,            ONLY : tpiba
   USE fft_base,             ONLY : dfftp
+  use fft_base,             only : grid_gather, grid_scatter
   USE fft_interfaces,       ONLY : fwfft
   USE gvect,                ONLY : ngm, gstart, g, ngl, gl, igtongl
   USE lsda_mod,             ONLY : nspin
@@ -32,12 +33,17 @@ subroutine force_corr (forcescc)
   USE wavefunctions_module, ONLY : psic
   USE mp_bands,             ONLY : intra_bgrp_comm
   USE mp,                   ONLY : mp_sum
+  use mp,                   ONLY : mp_bcast
+  USE mp_images,            ONLY : inter_fragment_comm, intra_image_comm
+  USE io_global,            ONLY : ionode, ionode_id
+  USE fde  
   !
   implicit none
   !
   real(DP) :: forcescc (3, nat)
   !
   real(DP), allocatable :: rhocgnt (:), aux (:)
+  real(DP), allocatable :: raux1(:), raux2(:)
   ! work space
   real(DP) ::  gx, arg, fact
   ! temp factors
@@ -59,6 +65,17 @@ subroutine force_corr (forcescc)
 
   forcescc(:,:) = 0.d0
 
+! FDE: WRONG !!!!
+  if ( .false. ) then
+      if ( ionode ) allocate(raux1(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
+      allocate(raux2(dfftp%nnr))
+      call grid_gather(real(psic, kind=dp), raux1)
+      if ( ionode ) call mp_sum(raux1, inter_fragment_comm)
+      call grid_scatter(raux1, raux2)
+      psic(:) = cmplx(raux2(:), 0.d0)
+      if ( ionode ) deallocate(raux1)
+      deallocate(raux2)
+  endif
   CALL fwfft ('Rho', psic, dfftp)
 
   if (gamma_only) then
