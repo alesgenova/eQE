@@ -19,6 +19,7 @@ SUBROUTINE wfcinit()
   USE bp,                   ONLY : lelfield
   USE klist,                ONLY : xk, nks, ngk, igk_k
   USE control_flags,        ONLY : io_level, lscf, twfcollect 
+  !USE control_flags,        ONLY : istep
   USE fixed_occ,            ONLY : one_atom_occupations
   USE ldaU,                 ONLY : lda_plus_u, U_projection, wfcU
   USE lsda_mod,             ONLY : lsda, current_spin, isk
@@ -60,6 +61,7 @@ SUBROUTINE wfcinit()
   ! ... open files/buffer for wavefunctions (nwordwfc set in openfil)
   ! ... io_level > 1 : open file, otherwise: open buffer
   !
+  !if ( istep < 1 ) & ! why?
   CALL open_buffer( iunwfc, 'wfc', nwordwfc, io_level, exst_mem, exst_file )
   !
   ! ... now the various possible wavefunction initializations

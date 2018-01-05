@@ -17,26 +17,41 @@ SUBROUTINE hinit0()
   USE ions_base,    ONLY : nat, nsp, ityp, tau
   USE basis,        ONLY : startingconfig
   USE cell_base,    ONLY : at, bg, omega, tpiba2
+  USE large_cell_base,    ONLY : atl => at, bgl => bg
   USE cellmd,       ONLY : omega_old, at_old, lmovecell
   USE klist,        ONLY : init_igk
   USE wvfct,        ONLY : npwx
   USE fft_base,     ONLY : dfftp
+  USE fft_base,     ONLY : dfftl
   USE gvect,        ONLY : ngm, g, eigts1, eigts2, eigts3
+  USE gvecl,        ONLY : ngml => ngm, &
+                            gl => g, &
+                            eigts1l => eigts1, &
+                            eigts2l => eigts2, &
+                            eigts3l => eigts3
   USE vlocal,       ONLY : strf
   USE gvecw,        ONLY : gcutw
   USE realus,       ONLY : generate_qpointlist,betapointlist,init_realspace_vars,real_space
   use ldaU,         ONLY : lda_plus_U, U_projection
   USE control_flags,ONLY : tqr, tq_smoothing, tbeta_smoothing
   USE io_global,    ONLY : stdout
+  use fde,          only : do_fde, linterlock, fde_cell_offset, &
+                            fde_cell_shift, frag_cell_split, &
+                            nat_fde, tau_fde, ityp_fde, strf_fde, strf_fde_large, &
+                            f2l, tau_large
+use fde_routines
   !
   IMPLICIT NONE
   !
   INTEGER :: ik                 ! counter on k points
+  integer :: nt
   REAL(dp), ALLOCATABLE :: gk(:) ! work space
   !
   ! ... calculate the Fourier coefficients of the local part of the PP
   !
   CALL init_vloc()
+  !
+  if (do_fde) call init_vloc_large()
   !
   ! ... k-point independent parameters of non-local pseudopotentials
   !
@@ -72,6 +87,13 @@ SUBROUTINE hinit0()
   !
   CALL struc_fact( nat, tau, nsp, ityp, ngm, g, bg, &
                    dfftp%nr1, dfftp%nr2, dfftp%nr3, strf, eigts1, eigts2, eigts3 )
+  if (do_fde ) then 
+    !strf_fde(:,:) = strf(:,:)
+    CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
+              dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
+    call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
+    call setlocal_fde_large(vltot_large, strf_fde_large)
+  endif
   !
   ! these routines can be used to patch quantities that are dependent
   ! on the ions and cell parameters
@@ -82,6 +104,8 @@ SUBROUTINE hinit0()
   ! ... calculate the total local potential
   !
   CALL setlocal()
+
+  if (do_fde .and. linterlock) call copy_pot_l2f(vltot_large, vltot)
   !
   ! ... calculate the core charge (if any) for the nonlinear core correction
   !
