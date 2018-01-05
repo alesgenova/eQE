@@ -347,19 +347,10 @@
       !
       integer_charge = ( ABS (nelec_ - NINT(nelec_)) < eps8 )
       !
-      IF ( tot_magnetization_ < 0 ) THEN
-         ! default when tot_magnetization is unspecified
-         IF ( integer_charge) THEN
-            nelup_ = INT( nelec_ + 1 ) / 2
-            neldw_ = nelec_ - nelup_
-         ELSE
-            nelup_ = nelec_ / 2
-            neldw_ = nelup_
-         END IF
-      ELSE
+      IF ( tot_magnetization_ .ne. 0 ) THEN
          ! tot_magnetization specified in input
          !
-         if ( (tot_magnetization_ > 0) .and. (nspin==1) ) &
+         if ( (tot_magnetization_ .ne. 0) .and. (nspin==1) ) &
                  CALL errore(' set_nelup_neldw  ', &
                  'tot_magnetization is inconsistent with nspin=1 ', 2 )
          integer_magnetization = ( ABS( tot_magnetization_ - &
@@ -372,6 +363,8 @@
             if ( ((MOD(NINT(tot_magnetization_),2) == 0) .and. &
                   (MOD(NINT(nelec_),2)==1))               .or. &
                  ((MOD(NINT(tot_magnetization_),2) == 1) .and. &
+                  (MOD(NINT(nelec_),2)==0))        .or.        &
+                 ((MOD(NINT(tot_magnetization_),2) == -1) .and. &
                   (MOD(NINT(nelec_),2)==0))      ) &
               CALL infomsg(' set_nelup_neldw ',                          &
              'BEWARE: non-integer number of up and down electrons!' )
@@ -384,6 +377,14 @@
             !
             nelup_ = ( nelec_ + tot_magnetization_ ) / 2
             neldw_ = ( nelec_ - tot_magnetization_ ) / 2
+         END IF
+      ELSE
+         IF ( (MOD(NINT(nelec_),2)==1)) then
+            nelup_ = INT( nelec_ + 1 ) / 2
+            neldw_ = nelec_ - nelup_
+         ELSE
+            nelup_ = nelec_ / 2
+            neldw_ = nelup_
          END IF
       END IF
 
