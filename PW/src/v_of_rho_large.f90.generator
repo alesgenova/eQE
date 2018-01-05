@@ -1,0 +1,156 @@
+!
+! Copyright (C) 2001-2013 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!----------------------------------------------------------------------------
+SUBROUTINE v_xc_meta_large( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Exchange-Correlation potential Vxc(r) from n(r)
+  !
+  USE kinds,            ONLY : DP
+  USE constants,        ONLY : e2, eps8
+  USE io_global,        ONLY : stdout
+  USE fft_base,         ONLY : dfftp
+  USE gvect,            ONLY : g, ngm
+  USE lsda_mod,         ONLY : nspin
+  USE cell_base,        ONLY : omega, alat
+  USE spin_orb,         ONLY : domag
+  USE funct,            ONLY : xc, xc_spin, tau_xc, tau_xc_spin, get_meta
+  USE scf,              ONLY : scf_type
+  USE mp,               ONLY : mp_sum
+  USE mp_bands,         ONLY : intra_bgrp_comm
+  use control_flags,    only : iverbosity
+  !
+  IMPLICIT NONE
+  !hack2018 ["v_xc_meta", "PW/src/v_of_rho.f90"]
+END SUBROUTINE v_xc_meta_large
+!
+SUBROUTINE v_xc_large( rho, rho_core, rhog_core, etxc, vtxc, v )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Exchange-Correlation potential Vxc(r) from n(r)
+  !
+  USE kinds,            ONLY : DP
+  USE constants,        ONLY : e2, eps8
+  USE io_global,        ONLY : stdout
+  USE fft_base,         ONLY : dfftp => dfftl
+  USE gvecl,            ONLY : ngm
+  USE lsda_mod,         ONLY : nspin
+  USE large_cell_base,  ONLY : omega  
+  USE spin_orb,         ONLY : domag
+  USE funct,            ONLY : xc, xc_spin, nlc, dft_is_nonlocc
+  USE scf_large,        ONLY : scf_type
+  USE mp_global,        ONLY : intra_pool_comm
+  USE mp_bands,         ONLY : intra_bgrp_comm => intra_lgrp_comm
+  USE mp,               ONLY : mp_sum
+  use control_flags,    only : iverbosity
+  !
+  IMPLICIT NONE
+  !hack2018 ["v_xc", "PW/src/v_of_rho.f90"]
+
+END SUBROUTINE v_xc_large
+!
+!----------------------------------------------------------------------------
+SUBROUTINE v_h_large( rhog, ehart, charge, v )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Hartree potential VH(r) from n(G)
+  !
+  USE constants, ONLY : fpi, e2
+  USE kinds,     ONLY : DP
+  USE fft_base,  ONLY : dfftp => dfftl
+  USE fft_interfaces,ONLY : invfft
+  USE gvecl,     ONLY : nl, nlm, ngm, gg, gstart
+  USE lsda_mod,  ONLY : nspin
+  USE large_cell_base, ONLY : omega, tpiba2
+  USE control_flags, ONLY : gamma_only
+  USE mp_large,  ONLY: intra_bgrp_comm => intra_lgrp_comm
+  USE mp_pools,  ONLY: intra_pool_comm
+  USE mp,        ONLY: mp_sum
+  USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
+  USE esm,       ONLY: do_comp_esm, esm_hartree, esm_bc
+  USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_2D, cutoff_hartree  
+  !
+  IMPLICIT NONE
+  !hack2018 ["v_h", "PW/src/v_of_rho.f90"]
+
+END SUBROUTINE v_h_large
+!
+!-----------------------------------------------------------------------
+SUBROUTINE v_hubbard_large(ns, v_hub, eth)
+  !
+  ! Computes Hubbard potential and Hubbard energy
+  !
+  USE kinds,                ONLY : DP
+  USE ions_base,            ONLY : nat, ityp
+  USE ldaU,                 ONLY : Hubbard_lmax, Hubbard_l, Hubbard_U, &
+                                   Hubbard_J, Hubbard_alpha, lda_plus_u_kind,&
+                                   Hubbard_J0, Hubbard_beta
+  USE lsda_mod,             ONLY : nspin
+  USE control_flags,        ONLY : iverbosity
+  USE io_global,            ONLY : stdout
+
+  IMPLICIT NONE
+  !hack2018 ["v_hubbard", "PW/src/v_hubbard_large.f90"]
+
+END SUBROUTINE v_hubbard_large
+!-------------------------------------
+
+!-------------------------------------
+SUBROUTINE v_hubbard_nc_large(ns, v_hub, eth)
+  !
+  ! Noncollinear version of v_hubbard.
+  !
+  USE kinds,                ONLY : DP
+  USE ions_base,            ONLY : nat, ityp
+  USE ldaU,                 ONLY : Hubbard_lmax, Hubbard_l, &
+                                   Hubbard_U, Hubbard_J, Hubbard_alpha
+  USE lsda_mod,             ONLY : nspin
+  USE control_flags,        ONLY : iverbosity
+  USE io_global,            ONLY : stdout
+
+  IMPLICIT NONE
+  !hack2018 ["v_hubbard_nc", "PW/src/v_hubbard_large.f90"]
+
+END SUBROUTINE v_hubbard_nc_large
+!-------------------------------------------
+
+!----------------------------------------------------------------------------
+SUBROUTINE v_h_of_rho_r_large( rhor, ehart, charge, v )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Hartree potential VH(r) from a density in R space n(r) 
+  !
+  USE kinds,           ONLY : DP
+  USE fft_base,        ONLY : dfftp
+  USE fft_interfaces,  ONLY : fwfft
+  USE lsda_mod,        ONLY : nspin
+  !
+  IMPLICIT NONE
+  !hack2018 ["v_h_of_rho_r", "PW/src/v_hubbard_large.f90"]
+
+END SUBROUTINE v_h_of_rho_r_large
+!----------------------------------------------------------------------------
+SUBROUTINE gradv_h_of_rho_r_large( rho, gradv )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Gradient of Hartree potential in R space from a total 
+  !     (spinless) density in R space n(r)
+  !
+  USE kinds,           ONLY : DP
+  USE fft_base,        ONLY : dfftp => dfftl
+  USE fft_interfaces,  ONLY : fwfft, invfft
+  USE constants,       ONLY : fpi, e2
+  USE control_flags,   ONLY : gamma_only
+  USE cell_base,       ONLY : tpiba, omega
+  USE gvecl,           ONLY : nl, ngm, nlm, gg, gstart, g
+  USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
+  !
+  IMPLICIT NONE
+  !hack2018 ["gradv_h_of_rho_r", "PW/src/v_hubbard_large.f90"]
+
+END SUBROUTINE gradv_h_of_rho_r_large
