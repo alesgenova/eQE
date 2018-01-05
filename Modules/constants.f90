@@ -21,6 +21,7 @@ MODULE constants
   ! 
   REAL(DP), PARAMETER :: pi     = 3.14159265358979323846_DP 
   REAL(DP), PARAMETER :: tpi    = 2.0_DP * pi
+  REAL(DP), PARAMETER :: tpi2   = 4._DP * pi * pi
   REAL(DP), PARAMETER :: fpi    = 4.0_DP * pi
   REAL(DP), PARAMETER :: sqrtpi = 1.77245385090551602729_DP 
   REAL(DP), PARAMETER :: sqrtpm1= 1.0_DP / sqrtpi
