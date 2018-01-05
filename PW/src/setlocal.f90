@@ -30,10 +30,12 @@ SUBROUTINE setlocal
   USE gvect,     ONLY : ngm
   USE control_flags, ONLY : gamma_only
   USE mp_bands,  ONLY : intra_bgrp_comm
+  USE mp_pools,  ONLY : intra_pool_comm
   USE mp,        ONLY : mp_sum
   USE martyna_tuckerman, ONLY : wg_corr_loc, do_comp_mt
   USE esm,       ONLY : esm_local, esm_bc, do_comp_esm
   USE qmmm,      ONLY : qmmm_add_esf
+  USE fde,       ONLY : do_fde, strf_fde, fde_init_rho
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_local 
   !
   IMPLICIT NONE
@@ -48,16 +50,29 @@ SUBROUTINE setlocal
   !
   IF (do_comp_mt) THEN
       ALLOCATE(v_corr(ngm))
-      CALL wg_corr_loc(omega,ntyp,ngm,zv,strf,v_corr)
+      if (do_fde) then
+          CALL wg_corr_loc(omega,ntyp,ngm,zv,strf_fde,v_corr)
+      else
+          CALL wg_corr_loc(omega,ntyp,ngm,zv,strf,v_corr)
+      endif
       aux(dfftp%nl(:)) = v_corr(:)
       DEALLOCATE(v_corr)
   END IF
   !
-  DO nt = 1, ntyp
-      DO ng = 1, ngm
-          aux (dfftp%nl(ng))=aux(dfftp%nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
-      END DO
-  END DO
+  if (do_fde .and. .not. fde_init_rho) then
+     do nt = 1, ntyp
+        do ng = 1, ngm
+           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf_fde (ng, nt)
+!           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
+        enddo
+     enddo
+  else
+     do nt = 1, ntyp
+        do ng = 1, ngm
+           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
+        enddo
+     enddo
+  endif
   IF (gamma_only) THEN
       DO ng = 1, ngm
           aux (dfftp%nlm(ng)) = CONJG(aux (dfftp%nl(ng)))
