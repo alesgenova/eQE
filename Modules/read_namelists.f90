@@ -312,6 +312,40 @@ MODULE read_namelists_module
        origin_choice = 1
        rhombohedral = .TRUE.
        !
+       ! ... FDE
+       !
+       fde_kin_funct = 'LC94'
+       fde_xc_funct = 'SAME'
+       fde_nspin = 1
+       fde_print_density = .false.
+       fde_print_density_frag = .false.
+       fde_print_density_frag_large = .false.
+       fde_print_embedpot = .false.
+       fde_print_allpot = .false.
+       fde_print_electro = .false.
+       fde_si = .false.
+       fde_si_all2all = .false.
+       fde_si_alpha = 0.d0
+       fde_r0 = 0.d0
+       fde_gp_rhot = 0.d0
+       fde_gp_alpha = 0.d0
+       fde_gp = 0.d0
+       fde_split_mix = .true.
+       fde_regrho = .false.
+       fde_overlap = .false.
+       fde_fractional = .false.
+       fde_fractional_onlyalpha = .false.
+       fde_fractional_onlybeta = .true.
+       fde_fractional_mixing = 0.0d0
+       fde_fractional_minEtransfer = 0.0d0
+       fde_fractional_maxEtransfer = 0.0d0
+       fde_fractional_cycle        = 1
+       fde_overlap_c = 0.0d0
+       fde_cell_split(1) = 1.d0
+       fde_cell_split(2) = 1.d0
+       fde_cell_split(3) = 1.d0
+       fde_do_pot_onlarge = .true.
+       !
        RETURN
        !
      END SUBROUTINE
@@ -426,6 +460,21 @@ MODULE read_namelists_module
        emass_cutoff_emin = 6.0_DP
        electron_damping_emin = 0.35_DP
        dt_emin = 4.0_DP
+       !
+       ! ... FDE
+       fde_fat = .FALSE.
+       fde_fat_thr = 1.E-_DP
+       fde_fat_maxstep = 0
+       fde_init_rho = .false.
+       fde_fat_mixing = 0._DP
+       fde_frag_charge = 0._DP
+       use_gaussians = .false.
+       saop_add = .false.
+       saop_nadd = .false.
+       saop_hirho = -0._DP
+       saop_lorho = -7._DP
+       saop_pow = 1._DP
+       saop_frac = 1._DP
        !
        RETURN
        !
@@ -911,7 +960,40 @@ MODULE read_namelists_module
        CALL mp_bcast( block_1,            ionode_id, intra_image_comm )
        CALL mp_bcast( block_2,            ionode_id, intra_image_comm )
        CALL mp_bcast( block_height,       ionode_id, intra_image_comm )
-
+       !
+       ! ... FDE method broadcast
+       !
+       CALL mp_bcast( fde_kin_funct,          ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_xc_funct,           ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_nspin,              ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_density,      ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_density_frag, ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_density_frag_large, ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_embedpot,     ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_allpot,       ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_print_electro,      ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_si,                 ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_si_all2all,         ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_si_alpha,           ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_r0,                 ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_gp_rhot,            ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_gp_alpha,           ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_gp,                 ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_split_mix,          ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_regrho,             ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_overlap,            ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional,         ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_mixing,  ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_minEtransfer,  ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_onlyalpha,     ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_onlybeta,     ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_maxEtransfer,  ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fractional_cycle,   ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_overlap_c,          ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_split_mix,          ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_cell_split,         ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_do_pot_onlarge,     ionode_id, intra_image_comm )
+       !
        RETURN
        !
      END SUBROUTINE
@@ -1031,6 +1113,21 @@ MODULE read_namelists_module
        CALL mp_bcast( emass_cutoff_emin,     ionode_id, intra_image_comm )
        CALL mp_bcast( electron_damping_emin, ionode_id, intra_image_comm )
        CALL mp_bcast( dt_emin,               ionode_id, intra_image_comm )
+       !
+       ! ... FDE ...
+       CALL mp_bcast( fde_fat,            ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fat_thr,        ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_init_rho,       ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fat_maxstep,    ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_fat_mixing,     ionode_id, intra_image_comm )
+       CALL mp_bcast( fde_frag_charge,    ionode_id, intra_image_comm )
+       CALL mp_bcast( use_gaussians,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_add,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_nadd,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_hirho,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_lorho,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_pow,      ionode_id, intra_image_comm )
+       CALL mp_bcast( saop_frac,      ionode_id, intra_image_comm )
        !
        RETURN
        !
