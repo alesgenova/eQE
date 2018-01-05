@@ -23,6 +23,7 @@ SUBROUTINE sum_band()
   USE gvect,                ONLY : ngm, g
   USE gvecs,                ONLY : doublegrid
   USE klist,                ONLY : nks, nkstot, wk, xk, ngk, igk_k
+  USE klist,                ONLY : two_fermi_energies
   USE fixed_occ,            ONLY : one_atom_occupations
   USE ldaU,                 ONLY : lda_plus_U
   USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
@@ -39,11 +40,15 @@ SUBROUTINE sum_band()
   USE mp_pools,             ONLY : inter_pool_comm
   USE mp_bands,             ONLY : inter_bgrp_comm, intra_bgrp_comm, nbgrp
   USE mp,                   ONLY : mp_sum
+  USE mp,                   only : mp_bcast
+  use mp_images,            ONLY : inter_fragment_comm, intra_image_comm
   USE funct,                ONLY : dft_is_meta
   USE paw_symmetry,         ONLY : PAW_symmetrize
   USE paw_variables,        ONLY : okpaw
   USE becmod,               ONLY : allocate_bec_type, deallocate_bec_type, &
                                    becp
+  USE fde,                  ONLY: do_fde, fde_fractional
+  use io_global,            ONLY: ionode, ionode_id, stdout
   !
   IMPLICIT NONE
   !
@@ -69,6 +74,15 @@ SUBROUTINE sum_band()
      rho%kin_r(:,:)      = 0.D0
      rho%kin_g(:,:)      = (0.D0, 0.D0)
   end if
+  !
+  ! First stab to the fractional Subsystem occupations code
+  !
+  if (do_fde.and.fde_fractional) then
+    if (nspin==2.and..not.two_fermi_energies) then
+      CALL errore( 'fde_fractional', ' fde_fractional and open-shell requires two_fermi_energies', 1 )
+    endif
+    CALL FractionalSubsystemOccupations ()
+  endif
   !
   ! ... calculates weights of Kohn-Sham orbitals used in calculation of rho
   !
@@ -843,6 +857,238 @@ SUBROUTINE sum_band()
 !$omp end parallel do
 
      END SUBROUTINE get_rho_domag
+
+
+     SUBROUTINE FractionalSubsystemOccupations ()
+        !
+        ! Driver for fde_fractional
+        ! MP: Aug 2016
+        !
+        !
+        ! This routine is for now based on the equalization of Fermi energies.
+        ! CONS: It is strongly dependent on the type of smearing used and
+        !       degauss. 
+        !       Needs further testing and possibly also implementation of a
+        !       different type of criterion (besides fermi energies)
+        !
+        !
+        USE control_flags,        ONLY : iverbosity
+        USE mp_images,            ONLY : inter_fragment_comm, intra_image_comm
+        USE mp,                   ONLY : mp_sum, mp_bcast, mp_max
+        USE klist,                ONLY : lgauss, nelec, two_fermi_energies, nelup, neldw
+        USE fde,                  ONLY : currfrag, nfragments, do_fde, current_scf_iteration,      &
+                                         current_scf_nelec, original_nelec, fde_overlap,           &
+                                         use_gaussians, fde_fractional_mixing,                     &
+                                         fde_fractional_minEtransfer, fde_fractional_maxEtransfer, &
+                                         original_nelec_up, original_nelec_dw,                     &
+                                         current_scf_nelec_up, current_scf_nelec_dw,               &
+                                         fde_fractional_cycle, fde_fractional_onlyalpha,           &
+                                         fde_fractional_onlybeta
+        use io_global,            ONLY : ionode, ionode_id, stdout
+        use ener,                 ONLY : ef, ef_up, ef_dw
+        !
+        !
+        REAL (DP) :: delta_ef, ef_sum, delta_ef_sum, delta_nelec_max, nelec_tmp
+        REAL (DP) :: delta_ef_dw, delta_ef_sum_dw, delta_nelec_max_dw, nelec_tmp_dw
+        REAL (DP) :: delta_ef_up, delta_ef_sum_up, delta_nelec_max_up, nelec_tmp_up
+        REAL (DP) :: ef_sum_up, ef_sum_dw
+        REAL (DP) :: efs(nfragments)
+        REAL (DP) :: efsup(nfragments)
+        REAL (DP) :: efsdw(nfragments)
+        !
+        !
+        efs(:) = 0.0d0
+        efsup(:) = 0.0d0
+        efsdw(:) = 0.0d0
+        ef_sum = 0.0d0
+        ef_sum_up = 0.0d0
+        ef_sum_dw = 0.0d0
+        !
+        !
+        !
+        !
+        if (.not.lgauss) call errore (' FractionalSubsystemOccupations ',' fde_fractional requires smearing ',1)
+        !
+        if (.not.fde_fractional_onlyalpha.and..not.fde_fractional_onlybeta) &
+            call errore(' FractionalSubsystemOccupations ',' must vary either the alpha or beta spin ',1)
+        !
+        !
+        if (ionode.and.iverbosity>10.and.current_scf_iteration==1) then
+            if (two_fermi_energies) then
+            if (fde_fractional_onlyalpha.and..not.fde_fractional_onlybeta) &
+                write(stdout,*) 'fde_fractional: varying only the alpha spin'
+            if (fde_fractional_onlybeta.and..not.fde_fractional_onlyalpha) &
+                write(stdout,*) 'fde_fractional: varying only the beta spin'
+            if (fde_fractional_onlybeta.and.fde_fractional_onlyalpha) &
+                write(stdout,*) 'fde_fractional: varying both spins'
+            endif
+        endif
+        !
+        !
+        !
+        !
+ scf_cycle: if (current_scf_iteration < fde_fractional_cycle) then
+              if (two_fermi_energies) then
+                original_nelec_up = nelup
+                original_nelec_dw = neldw
+                current_scf_nelec_up = nelup
+                current_scf_nelec_dw = neldw
+              else
+                original_nelec = nelec
+                current_scf_nelec = nelec
+              endif
+              return
+            else
+              !
+              if (two_fermi_energies) then
+                 delta_nelec_max = max(abs(nelup-original_nelec_up),abs(neldw-original_nelec_dw))
+              else 
+                 delta_nelec_max = abs(nelec-original_nelec)
+              endif
+              if (ionode) call mp_max( delta_nelec_max, inter_fragment_comm )
+              call mp_bcast ( delta_nelec_max, ionode_id, intra_image_comm )
+              !
+              ! cap the total maximum number of transferred electrons
+              if ( delta_nelec_max .ge. fde_fractional_maxEtransfer ) return
+              !
+          io: if (ionode) then
+              if (two_fermi_energies) then
+                efsup(currfrag) = ef_up
+                call mp_sum(efsup, inter_fragment_comm) 
+                ef_sum_up = ef_up/real(nfragments,dp)
+                call mp_sum(ef_sum_up, inter_fragment_comm) 
+                delta_ef_up = -(ef_up - ef_sum_up)*fde_fractional_mixing
+                nelec_tmp_up = nelup + delta_ef_up
+                !
+                efsdw(currfrag) = ef_dw
+                call mp_sum(efsdw, inter_fragment_comm) 
+                ef_sum_dw = ef_dw/real(nfragments,dp)
+                call mp_sum(ef_sum_dw, inter_fragment_comm) 
+                delta_ef_dw = -(ef_dw - ef_sum_dw)*fde_fractional_mixing
+                nelec_tmp_dw = neldw + delta_ef_dw
+                !
+                if (fde_fractional_onlyalpha.and..not.fde_fractional_onlybeta) then
+                   efsdw(currfrag) = 0.0d0
+                   call mp_sum(efsdw, inter_fragment_comm)
+                   ef_sum_dw = 0.0d0
+                   call mp_sum(ef_sum_dw, inter_fragment_comm) 
+                   delta_ef_dw = 0.0d0
+                   nelec_tmp_dw = neldw
+                elseif (fde_fractional_onlybeta.and..not.fde_fractional_onlyalpha) then
+                   efsup(currfrag) = 0.0d0
+                   call mp_sum(efsup, inter_fragment_comm)
+                   ef_sum_up = 0.0d0
+                   call mp_sum(ef_sum_up, inter_fragment_comm) 
+                   delta_ef_up = 0.0d0
+                   nelec_tmp_up = nelup
+                endif
+                !
+                delta_ef_sum_up = delta_ef_up
+                delta_ef_sum_dw = delta_ef_dw
+                call mp_sum(delta_ef_sum_up, inter_fragment_comm)
+                call mp_sum(delta_ef_sum_dw, inter_fragment_comm)
+                !
+                ! ... for printing purposes
+                delta_ef = delta_ef_up + delta_ef_dw
+                ef_sum = ef_sum_up + ef_sum_dw
+                delta_ef_sum = delta_ef_sum_up + delta_ef_sum_dw
+                !
+              else 
+                efs(currfrag) = ef
+                call mp_sum(efs, inter_fragment_comm) 
+                ef_sum = ef/real(nfragments,dp)
+                call mp_sum(ef_sum, inter_fragment_comm) 
+                delta_ef = -(ef - ef_sum)*fde_fractional_mixing
+                nelec_tmp = nelec + delta_ef
+                delta_ef_sum = delta_ef
+                call mp_sum(delta_ef_sum, inter_fragment_comm)
+              endif
+                if (iverbosity > 10) then
+                   if (two_fermi_energies) then
+                     write(stdout,'(a,I3,1X,f8.4)') "==> Change in subsystem alpha occupation: ", currfrag, delta_ef_up
+                     write(stdout,'(a,I3,1X,f8.4)') "==> Change in subsystem beta  occupation: ", currfrag, delta_ef_dw
+                   else
+                     write(stdout,'(a,I3,1X,f8.4)') "==> Change in subsystem occupation: ", &
+                                                                          currfrag, delta_ef
+                   endif
+                   write(stdout,'(a,I3,1X,f8.4)')   "==> Change in subsystem Fermi Ener: ", &
+                                                                          currfrag, delta_ef*fde_fractional_mixing*ef_sum
+                   write(stdout,'(a,I3,1X,f8.4)')   "==> Global charge change          : ", currfrag, delta_ef_sum
+                endif
+              endif io
+            endif scf_cycle
+         !
+         !
+         !write(stdout)'THIS GIVES A COMPILATION ERROR W/ gfortran 5.4'
+         ! ... I really don't know why!?!?!?!?
+         if (two_fermi_energies) then
+            call mp_bcast(efsup, ionode_id, intra_image_comm)
+            call mp_bcast(efsdw, ionode_id, intra_image_comm)
+            if (iverbosity > 10.and.ionode) then
+               write(stdout,'(a,5(1X,f8.4))') "==>  Ef(alpha) : ", efsup(1:nfragments)
+               write(stdout,'(a,(1X,f8.4))')  "==> <Ef(alpha)>: ", ef_sum_up
+               write(stdout,'(a,5(1X,f8.4))') "==>  Ef(beta ) : ", efsdw(1:nfragments)
+               write(stdout,'(a,(1X,f8.4))')  "==> <Ef(beta )>: ", ef_sum_dw
+            endif
+         else
+            call mp_bcast(efs, ionode_id, intra_image_comm)
+            if (iverbosity > 10.and.ionode) then
+               write(stdout,'(a,5(1X,f8.4))') "==> Efs: ", efs(1:nfragments)
+            endif
+         endif
+         !
+         !
+         !
+         if (two_fermi_energies) then
+             call mp_bcast(delta_ef_sum_up, ionode_id, intra_image_comm)
+             call mp_bcast(delta_ef_sum_dw, ionode_id, intra_image_comm)
+             if (0.5d0*(delta_ef_sum_up+delta_ef_sum_dw) > 1.0e-10 ) then
+               call errore (' FractionalSubsystemOccupations ',' Global charge change too high ',1)
+             endif
+             call mp_bcast(nelec_tmp_up, ionode_id, intra_image_comm)
+             call mp_bcast(nelec_tmp_dw, ionode_id, intra_image_comm)
+         else
+             call mp_bcast(delta_ef_sum, ionode_id, intra_image_comm)
+             if (delta_ef_sum > 1.0e-10 ) then
+               call errore (' FractionalSubsystemOccupations ',' Global charge change too high ',1)
+             endif
+             call mp_bcast(nelec_tmp, ionode_id, intra_image_comm)
+         endif
+         !
+         !
+         !
+         !
+         !
+         ! compute maximum charge variation
+         if (ionode) then
+          if (two_fermi_energies) then
+           delta_nelec_max = max(abs(nelec_tmp_up-nelup),abs(nelec_tmp_dw-neldw)) 
+          else
+           delta_nelec_max = abs(nelec_tmp-nelec)
+          endif
+          call mp_max(delta_nelec_max, inter_fragment_comm)
+         endif
+         !
+         call mp_bcast ( delta_nelec_max, ionode_id, intra_image_comm )
+         !
+         ! return if the charge variation is too small
+         if (delta_nelec_max <fde_fractional_minEtransfer) then
+           if (ionode.and.iverbosity>10) write(stdout,'(a,f8.4)') "==> delta_nelec_max", delta_nelec_max
+           return
+         endif
+         !
+         if (two_fermi_energies) then
+           nelup = nelec_tmp_up
+           current_scf_nelec_up = nelup
+           neldw = nelec_tmp_dw
+           current_scf_nelec_dw = neldw
+           nelec = nelup + neldw
+         else
+           nelec = nelec_tmp
+           current_scf_nelec = nelec
+         endif
+         !
+     END SUBROUTINE FractionalSubsystemOccupations
 
 END SUBROUTINE sum_band
 
