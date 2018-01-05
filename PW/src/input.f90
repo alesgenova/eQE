@@ -23,10 +23,13 @@ SUBROUTINE iosys()
   USE funct,         ONLY : dft_is_hybrid, dft_has_finite_size_correction, &
                             set_finite_size_volume, get_inlc, get_dft_short
   USE funct,         ONLY: set_exx_fraction, set_screening_parameter
+  USE funct,         ONLY: dft_is_nonlocc
   USE control_flags, ONLY: adapt_thr, tr2_init, tr2_multi
   USE constants,     ONLY : autoev, eV_to_kelvin, pi, rytoev, &
                             ry_kbar, amu_ry, bohr_radius_angs, eps8
   USE mp_pools,      ONLY : npool
+  USE mp,            ONLY : mp_max, mp_bcast, mp_sum
+  USE mp_images,     ONLY : inter_fragment_comm, intra_image_comm
   !
   USE io_global,     ONLY : stdout, ionode, ionode_id
   !
@@ -44,6 +47,12 @@ SUBROUTINE iosys()
   !
   USE cell_base,     ONLY : at, alat, omega, bg, &
                             cell_base_init, init_dofree
+  USE cell_base,     ONLY : celldm_small => celldm
+  USE large_cell_base, ONLY : atl => at, &
+                              bgl => bg, &
+                              alatl => alat, & 
+                              omegal => omega, &
+                              large_cell_base_init => cell_base_init
   !
   USE ions_base,     ONLY : if_pos, ityp, tau, extfor, &
                             ntyp_ => nsp, &
@@ -99,15 +108,18 @@ SUBROUTINE iosys()
                             pseudo_dir_ => pseudo_dir
   !
   USE force_mod,     ONLY : lforce, lstres, force
+  USE gvecl,         ONLY : ecutrho_large_ => ecutrho
   !
   USE fft_base, ONLY : dfftp
   USE fft_base, ONLY : dffts
+  USE fft_base, ONLY : dfftl
   !
-  USE klist,         ONLY : ltetra, lgauss, ngauss, two_fermi_energies, &
+  USE klist,         ONLY : ltetra, lgauss, ngauss, two_fermi_energies, &     !hack2018
                             smearing_          => smearing, &
                             degauss_           => degauss, &
                             tot_charge_        => tot_charge, &
                             tot_magnetization_ => tot_magnetization
+  USE klist,         ONLY : two_fermi_energies_ => two_fermi_energies
   USE ktetra,        ONLY : tetra_type
   USE start_k,       ONLY : init_start_k
   !
@@ -214,6 +226,53 @@ SUBROUTINE iosys()
   USE read_pseudo_mod,       ONLY : readpp
 
   USE qmmm,                  ONLY : qmmm_config
+  
+  USE fde,                   ONLY : fde_fat_         => fde_fat,          &
+                                    tr2_fat,                              &
+                                    fde_init_rho_    => fde_init_rho,     &
+                                    fde_fat_maxstep_ => fde_fat_maxstep,  &
+                                    fde_fat_mixing_  => fde_fat_mixing,   &
+                                    fde_nspin_       => fde_nspin,        &
+                                    fde_frag_nspin,                       &
+                                    fde_frag_charge_ => fde_frag_charge,  &
+                                    saop_add_ => saop_add, &
+                                    saop_nadd_ => saop_nadd, &
+                                    saop_hirho_ => saop_hirho, &
+                                    saop_lorho_ => saop_lorho, &
+                                    saop_pow_ => saop_pow, &
+                                    saop_frac_ => saop_frac, &
+                                    fde_total_charge , &
+                                    fde_print_density_ => fde_print_density, &
+                                    fde_print_density_frag_ => fde_print_density_frag, &
+                                    fde_print_density_frag_large_ => fde_print_density_frag_large, &
+                                    fde_print_embedpot_ => fde_print_embedpot, &
+                                    fde_print_electro_ => fde_print_electro, &
+                                    fde_plotemb_vec , fde_printdensity_vec, &
+                                    fde_print_allpot_ => fde_print_allpot, &
+                                    use_gaussians_ => use_gaussians, &
+                                    fde_si_ => fde_si, &
+                                    fde_si_vec, nfragments, currfrag, &
+                                    fde_si_all2all_ => fde_si_all2all, &
+                                    fde_si_alpha_ => fde_si_alpha, &
+                                    fde_r0_ => fde_r0, &
+                                    fde_gp_ => fde_gp, &
+                                    fde_gp_alpha_ => fde_gp_alpha, &
+                                    fde_gp_rhot_ => fde_gp_rhot, &
+                                    fde_regrho_ => fde_regrho, &
+                                    fde_fractional_ => fde_fractional, &
+                                    fde_fractional_onlyalpha_ => fde_fractional_onlyalpha, &
+                                    fde_fractional_onlybeta_ => fde_fractional_onlybeta, &
+                                    fde_fractional_mixing_ => fde_fractional_mixing, &
+                                    fde_fractional_minEtransfer_ => fde_fractional_minEtransfer, &
+                                    fde_fractional_maxEtransfer_ => fde_fractional_maxEtransfer, &
+                                    fde_fractional_cycle_        => fde_fractional_cycle,        &
+                                    fde_overlap_ => fde_overlap, &
+                                    fde_overlap_c_ => fde_overlap_c, &
+                                    fde_split_mix_ => fde_split_mix , &
+                                    frag_cell_split, linterlock, do_fde, &
+                                    fde_split_types, fde_frag_split_type, &
+                                    fde_max_divisor, tau_large, &
+                                    fde_kin_is_nl, fde_dotsonlarge
   !
   ! ... CONTROL namelist
   !
@@ -264,6 +323,8 @@ SUBROUTINE iosys()
                                space_group, uniqueb, origin_choice,           &
                                rhombohedral, zgate, relaxz, block, block_1,   &
                                block_2, block_height
+  USE input_parameters, ONLY : two_fermi_energies
+  USE input_parameters, ONLY : fde_xc_funct
   !
   ! ... ELECTRONS namelist
   !
@@ -275,10 +336,28 @@ SUBROUTINE iosys()
                                diago_full_acc, startingwfc, startingpot,   &
                                real_space, scf_must_converge
   USE input_parameters, ONLY : adaptive_thr, conv_thr_init, conv_thr_multi
+ ! ... FDE SYSTEM namelist
+  USE input_parameters, ONLY : fde_fat, fde_fat_thr,                       &
+                               fde_init_rho, fde_fat_maxstep,              &
+                               fde_fat_mixing, fde_nspin, fde_frag_charge, &
+                               saop_hirho, saop_lorho, saop_pow, &
+                               saop_add, saop_nadd, saop_frac, &
+                               fde_print_density, fde_print_embedpot, use_gaussians, &
+                               fde_print_density_frag, fde_print_density_frag_large,&
+                               fde_print_electro, &
+                               fde_si, fde_si_all2all, &
+                               fde_si_alpha, &
+                               fde_split_mix, fde_regrho, fde_overlap, fde_overlap_c, &
+                               fde_fractional_minEtransfer, fde_fractional_maxEtransfer, &
+                               fde_fractional_mixing, fde_fractional_cycle, &
+                               fde_fractional, fde_fractional_onlyalpha, fde_gp, fde_r0,  &
+                               fde_fractional_onlybeta, &
+                               fde_gp_alpha, fde_gp_rhot, fde_print_allpot, &
+                               fde_cell_split, fde_kin_funct, fde_do_pot_onlarge
   !
   ! ... IONS namelist
   !
-  USE input_parameters, ONLY : ion_dynamics, ion_positions, tolp, &
+  USE input_parameters, ONLY : ion_dynamics, ion_positions, tolp, &    !hack2018 missing phase_space
                                tempw, delta_t, nraise, ion_temperature,        &
                                refold_pos, remove_rigid_rot, upscale,          &
                                pot_extrapolation,  wfc_extrapolation,          &
@@ -335,6 +414,7 @@ SUBROUTINE iosys()
   INTEGER, EXTERNAL :: read_config_from_file
   !
   INTEGER  :: ia, nt, inlc, ibrav_sg, ierr
+  INTEGER  :: i, old_order
   LOGICAL  :: exst, parallelfs
   REAL(DP) :: theta, phi, ecutwfc_pp, ecutrho_pp
   !
@@ -661,11 +741,13 @@ SUBROUTINE iosys()
                           &noncol. magnetism, use lda_plus_u_kind = 1', 1)
   END IF
   !
-  two_fermi_energies = ( tot_magnetization /= -1._DP)
+  !two_fermi_energies = ( tot_magnetization /= -1._DP)
   IF ( two_fermi_energies .and. tot_magnetization < 0._DP) &
      CALL errore( 'iosys', 'tot_magnetization only takes positive values', 1 )
   IF ( two_fermi_energies .and. .not. lsda ) &
      CALL errore( 'iosys', 'tot_magnetization requires nspin=2', 1 )
+  IF (( tot_magnetization /= -1._DP).and.(nspin==2).and..not.two_fermi_energies) &
+       write(stdout,*) "  WARNING: two_fermi_energies = .true. in the input file. "  
   !
   IF ( occupations == 'fixed' .and. lsda  .and. lscf ) THEN
      !
@@ -964,6 +1046,142 @@ SUBROUTINE iosys()
   adapt_thr = adaptive_thr
   tr2_init  = conv_thr_init
   tr2_multi = conv_thr_multi
+  
+   ! FDE
+  tr2_fat = fde_fat_thr
+  fde_fat_ = fde_fat
+  fde_init_rho_ = fde_init_rho
+  fde_fat_maxstep_ = fde_fat_maxstep
+  fde_fat_mixing_ = fde_fat_mixing
+  fde_nspin_ = fde_nspin
+  fde_frag_nspin = nspin
+  fde_frag_charge_ = fde_frag_charge
+  fde_total_charge = fde_frag_charge
+  saop_add_ = saop_add
+  saop_nadd_ = saop_nadd
+  saop_hirho_ = saop_hirho
+  saop_lorho_ = saop_lorho
+  saop_pow_ = saop_pow
+  saop_frac_ = saop_frac
+  if (ionode) call mp_sum( fde_total_charge, inter_fragment_comm )
+  call mp_bcast( fde_total_charge, ionode_id, intra_image_comm )
+  !write(stdout,*)'fde_frag_charge',fde_frag_charge
+  fde_print_density_ = fde_print_density
+  fde_print_density_frag_ = fde_print_density_frag
+  fde_print_density_frag_large_ = fde_print_density_frag_large
+  fde_print_embedpot_ = fde_print_embedpot
+  fde_print_allpot_ = fde_print_allpot
+  fde_print_electro_ = fde_print_electro
+  use_gaussians_ = use_gaussians
+  fde_si_ = fde_si
+  fde_si_all2all_ = fde_si_all2all
+  fde_si_alpha_ = fde_si_alpha
+
+  allocate( fde_printdensity_vec(nfragments) )
+  fde_printdensity_vec(:) = 0
+  if (fde_print_density) fde_printdensity_vec(currfrag) = 1
+  if (ionode) call mp_sum( fde_printdensity_vec, inter_fragment_comm )
+  call mp_bcast( fde_printdensity_vec, ionode_id, intra_image_comm )
+
+  allocate( fde_si_vec(nfragments) )
+  fde_si_vec(:) = 0
+  if (fde_si) fde_si_vec(currfrag) = 1
+  if (ionode) call mp_sum( fde_si_vec, inter_fragment_comm )
+  call mp_bcast( fde_si_vec, ionode_id, intra_image_comm )
+  
+  allocate( fde_plotemb_vec(nfragments) )
+  fde_plotemb_vec(:) = 0
+  if (fde_print_embedpot) fde_plotemb_vec(currfrag) = 1
+  if (ionode) call mp_sum( fde_plotemb_vec, inter_fragment_comm )
+  call mp_bcast( fde_plotemb_vec, ionode_id, intra_image_comm )
+
+  fde_r0_ = fde_r0
+  fde_gp_ = fde_gp
+  fde_gp_alpha_ = fde_gp_alpha
+  fde_gp_rhot_ = fde_gp_rhot
+  fde_split_mix_ = fde_split_mix
+  fde_regrho_ = fde_regrho
+  fde_fractional_ = fde_fractional
+  fde_fractional_onlyalpha_ = fde_fractional_onlyalpha
+  fde_fractional_onlybeta_ = fde_fractional_onlybeta
+  fde_fractional_mixing_ = fde_fractional_mixing
+  fde_fractional_minEtransfer_ = fde_fractional_minEtransfer
+  fde_fractional_maxEtransfer_ = fde_fractional_maxEtransfer
+  fde_fractional_cycle_        = fde_fractional_cycle
+  fde_overlap_ = fde_overlap
+  fde_overlap_c_ = fde_overlap_c
+
+  fde_kin_is_nl = (      trim(fde_kin_funct) == 'GPRHO0' &
+                    .or. trim(fde_kin_funct) == 'GPLDA' )
+
+
+if (do_fde) then
+
+  do i = 1, 3
+    if (fde_cell_split(i) <= 0.2d0) then
+      frag_cell_split(i) = 0.2d0
+      fde_frag_split_type(i) = 1
+    elseif (fde_cell_split(i) <= 0.25d0) then
+      frag_cell_split(i) = 0.25d0
+      fde_frag_split_type(i) = 2
+    elseif (fde_cell_split(i) <= 0.34d0) then
+      frag_cell_split(i) = 0.33333333333333333333333d0
+      fde_frag_split_type(i) = 3
+    elseif (fde_cell_split(i) <= 0.4d0) then
+      frag_cell_split(i) = 0.4d0
+      fde_frag_split_type(i) = 4
+    elseif (fde_cell_split(i) <= 0.5d0) then
+      frag_cell_split(i) = 0.5d0
+      fde_frag_split_type(i) = 5
+    elseif (fde_cell_split(i) <= 0.6d0) then
+      frag_cell_split(i) = 0.6d0
+      fde_frag_split_type(i) = 6
+    elseif (fde_cell_split(i) <= 0.67d0) then
+      frag_cell_split(i) = 0.66666666666666666666667d0
+      fde_frag_split_type(i) = 7
+    elseif (fde_cell_split(i) <= 0.75d0) then
+      frag_cell_split(i) = 0.75d0
+      fde_frag_split_type(i) = 8
+    elseif (fde_cell_split(i) <= 0.8d0) then
+      frag_cell_split(i) = 0.8d0
+      fde_frag_split_type(i) = 9
+    else
+      frag_cell_split(i) = 1.d0
+      fde_frag_split_type(i) = 10
+    endif
+   
+   fde_max_divisor(i) = fde_split_types( fde_frag_split_type(i), 2)
+   if (ionode) call mp_max( fde_max_divisor(i), inter_fragment_comm )
+   call mp_bcast( fde_max_divisor(i), ionode_id, intra_image_comm )
+   !if ( fde_grid_order(i) > old_order ) then
+     !if ( old_order == 2 ) old_order = 4 
+     !frag_cell_split(i) = dble(nint(frag_cell_split(i)*old_order) + 1) / dble(fde_grid_order(i))
+     !if ( old_order == 1 ) frag_cell_split(i) = 1.d0
+   !endif
+    
+  enddo
+
+  
+  if (fde_max_divisor(1) > 1 .or. &
+      fde_max_divisor(2) > 1 .or. &
+      fde_max_divisor(3) > 1 )    then
+     linterlock = .true.
+  else
+     linterlock = .true.   ! remember to change it back to .false.
+  endif
+
+  ! if we have more than one fragment we shouldn't make assumptions on the
+  ! symmetry of the system
+  
+  if (nfragments > 1) then
+    nosym = .true.
+    nosym_evc = .true.
+  endif
+
+  fde_dotsonlarge = fde_do_pot_onlarge
+
+endif
+  !
   !
   pot_order = 1
   SELECT CASE( trim( pot_extrapolation ) )
@@ -1111,6 +1329,8 @@ SUBROUTINE iosys()
                      & ' conv_thr must be reduced', 1 )
   !
   SELECT CASE( trim( verbosity ) )
+  CASE( 'fde_debug', 'fde_high' )
+     iverbosity = 11
   CASE( 'debug', 'high', 'medium' )
      iverbosity = 1
   CASE( 'low', 'default', 'minimal' )
@@ -1185,6 +1405,7 @@ SUBROUTINE iosys()
   dfftp%nr1     = nr1
   dfftp%nr2     = nr2
   dfftp%nr3     = nr3
+  ecutrho_large_ = ecutrho
   ecfixed_ = ecfixed
   qcutz_   = qcutz
   q2sigma_ = q2sigma
@@ -1195,6 +1416,7 @@ SUBROUTINE iosys()
   !
   tot_charge_        = tot_charge
   tot_magnetization_ = tot_magnetization
+  two_fermi_energies_ = two_fermi_energies
   !
   lspinorb_ = lspinorb
   lforcet_ = lforcet
@@ -1465,6 +1687,7 @@ SUBROUTINE iosys()
 
   ALLOCATE( ityp( nat_ ) )
   ALLOCATE( tau(    3, nat_ ) )
+  if (do_fde) ALLOCATE( tau_large( 3, nat) )   
   ALLOCATE( force(  3, nat_ ) )
   ALLOCATE( if_pos( 3, nat_ ) )
   ALLOCATE( extfor( 3, nat_ ) )
@@ -1486,8 +1709,27 @@ SUBROUTINE iosys()
   !
   ! ... set up atomic positions and crystal lattice
   !
-  call cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
+  if (do_fde) then
+     call cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
                         trd_ht, rd_ht, cell_units )
+     at(:,1) = atl(:,1) *(frag_cell_split(1)) 
+     at(:,2) = atl(:,2) *(frag_cell_split(2)) 
+     at(:,3) = atl(:,3) *(frag_cell_split(3)) 
+
+     bg(:,1) = bgl(:,1) /(frag_cell_split(1))
+     bg(:,2) = bgl(:,2) /(frag_cell_split(2))
+     bg(:,3) = bgl(:,3) /(frag_cell_split(3))
+  
+     alat = alatl
+
+     celldm_small(1) = alat
+
+     CALL volume( alat, at(1,1), at(1,2), at(1,3), omega )
+
+  else
+     call cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
+                        trd_ht, rd_ht, cell_units , linterlock)
+  endif
 
   !
   ! ... Files (for compatibility) and directories
@@ -1512,6 +1754,13 @@ SUBROUTINE iosys()
   IF ( startingconfig == 'file' .AND. .NOT. lforcet ) &
      ierr = read_config_from_file(nat, at_old, omega_old, lmovecell, &
                                        at, bg, omega, tau)
+  if ( do_fde .and. (.not. restart) ) then
+     !write(stdout,*) 'Copying TAU to TAU_LARGE'
+     IF ( ierr /= 0 ) CALL convert_tau_large ( tau_format, nat_, tau)
+     tau_large = tau
+  else
+    IF ( ierr /= 0 ) CALL convert_tau ( tau_format, nat_, tau)
+  endif
   !
   ! ... read_config_from_file returns 0 if structure successfully read
   ! ... Atomic positions (tau) must be converted to internal units
@@ -1636,9 +1885,35 @@ SUBROUTINE iosys()
   !
   ! ... read the vdw kernel table if needed
   !
+  if (dft_is_nonlocc()) then
+  if (do_fde) then
+        if (trim(fde_xc_funct) == 'SAME' ) then
+           inlc = get_inlc()
+        elseif (trim(fde_xc_funct) == 'RVV10' ) then
+           inlc = 3
+        elseif (trim(fde_xc_funct) == 'REV-VDW-DF2' .or. &
+                trim(fde_xc_funct) == 'VDW-DF2-C09' .or. &
+                trim(fde_xc_funct) == 'VDW-DF2' ) then
+           inlc = 2
+        elseif (trim(fde_xc_funct) == 'VDW-DF4'    .or. &
+                trim(fde_xc_funct) == 'VDW-DF3'    .or. &
+                trim(fde_xc_funct) == 'VDW-DF-C09' .or. & 
+                trim(fde_xc_funct) == 'VDW-DF' ) then
+           inlc = 1
+        else
+           inlc = 0
+        endif
+        if (inlc > 0) call initialize_kernel_table(inlc)
+  else
+        inlc = get_inlc()
+        if (inlc > 0) call initialize_kernel_table(inlc)
+  endif
+
+  ! AG this line doesn't make much sense here, move it to a else statement above
+  !if (trim(fde_xc_funct) /= 'SAME' .and. inlc .ne. 0) inlc = 0
+  endif
   vdw_table_name_  = vdw_table_name
-  inlc = get_inlc()
-  IF (inlc > 0) CALL initialize_kernel_table(inlc)
+  
   !
   ! ... if DFT finite size corrections are needed, define the appropriate volume
   !
@@ -1892,6 +2167,52 @@ SUBROUTINE convert_tau (tau_format, nat_, tau)
   END SELECT
   !
 END SUBROUTINE convert_tau
+!-----------------------------------------------------------------------
+SUBROUTINE convert_tau_large (tau_format, nat_, tau)
+!-----------------------------------------------------------------------
+  !
+  ! ... convert input atomic positions to internally used format:
+  ! ... tau in a0 units
+  !
+  USE kinds,         ONLY : DP
+  USE constants,     ONLY : bohr_radius_angs
+  USE large_cell_base,     ONLY : atl => at, alat
+  IMPLICIT NONE
+  CHARACTER (len=*), INTENT(in)  :: tau_format
+  INTEGER, INTENT(in)  :: nat_
+  REAL (DP), INTENT(inout) :: tau(3,nat_)
+  !
+  SELECT CASE( tau_format )
+  CASE( 'alat' )
+     !
+     ! ... input atomic positions are divided by a0: do nothing
+     !
+  CASE( 'bohr' )
+     !
+     ! ... input atomic positions are in a.u.: divide by alat
+     !
+     tau = tau / alat
+     !
+  CASE( 'crystal' )
+     !
+     ! ... input atomic positions are in crystal axis
+     !
+     CALL cryst_to_cart( nat_, tau, atl, 1 )
+     !
+  CASE( 'angstrom' )
+     !
+     ! ... atomic positions in A: convert to a.u. and divide by alat
+     !
+     tau = tau / bohr_radius_angs / alat
+     !
+  CASE DEFAULT
+     !
+     CALL errore( 'iosys','tau_format=' // &
+                & trim( tau_format ) // ' not implemented', 1 )
+     !
+  END SELECT
+  !
+END SUBROUTINE convert_tau_large
 !-----------------------------------------------------------------------
 SUBROUTINE check_tempdir ( tmp_dir, exst, pfs )
   !-----------------------------------------------------------------------

@@ -18,8 +18,10 @@ function ewald (alat, nat, ntyp, ityp, zv, at, bg, tau, omega, g, &
   USE kinds
   USE constants, ONLY : tpi, e2
   USE mp_bands,  ONLY : intra_bgrp_comm
+  USE mp_large,  ONLY : intra_lgrp_comm
   USE mp,        ONLY : mp_sum
   USE martyna_tuckerman, ONLY : wg_corr_ewald, do_comp_mt
+  use fde,       only: linterlock
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_ewald
   implicit none
   !
@@ -160,7 +162,12 @@ function ewald (alat, nat, ntyp, ityp, zv, at, bg, tau, omega, g, &
   ewald = 0.5d0 * e2 * (ewaldg + ewaldr)
   if ( do_comp_mt ) ewald =  ewald + wg_corr_ewald ( omega, ntyp, ngm, zv, strf )
   !
-  call mp_sum(  ewald, intra_bgrp_comm )
+  if (linterlock) then
+    call mp_sum(  ewald, intra_lgrp_comm )
+  else
+    call mp_sum(  ewald, intra_bgrp_comm )
+  endif
+  !call mp_sum(  ewald, intra_bgrp_comm )
   !      call mp_sum( ewaldr, intra_bgrp_comm )
   !      call mp_sum( ewaldg, intra_bgrp_comm )
   !      WRITE( stdout,'(/5x,"alpha used in ewald term: ",f4.2/

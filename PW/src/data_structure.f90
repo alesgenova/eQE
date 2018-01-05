@@ -16,19 +16,27 @@ SUBROUTINE data_structure( gamma_only )
   USE kinds,      ONLY : DP
   USE mp,         ONLY : mp_max
   USE mp_bands,   ONLY : nproc_bgrp, intra_bgrp_comm, nyfft, ntask_groups
+  USE mp_large,   ONLY : me_lgrp, nproc_lgrp, root_lgrp, intra_lgrp_comm
   USE mp_pools,   ONLY : inter_pool_comm
   USE fft_base,   ONLY : dfftp, dffts, fft_base_info, smap
+  USE fft_base,   ONLY : dfftl
   USE fft_types,  ONLY : fft_type_init
   USE cell_base,  ONLY : at, bg, tpiba
+  USE large_cell_base,  ONLY : bgl => bg, tpibal => tpiba
   USE klist,      ONLY : xk, nks
   USE gvect,      ONLY : gcutm, gvect_init
   USE gvecs,      ONLY : gcutms, gvecs_init, doublegrid
+  USE gvecl,      ONLY : gcutml => gcutm, gvecl_init
+  USE stick_set_large,  ONLY : pstickset_large
+  use fde,        only : do_fde, linterlock
+  use io_global,  only : stdout!, flush_unit
   USE gvecw,      ONLY : gcutw, gkcut
   USE io_global,  ONLY : stdout, ionode
   !
   IMPLICIT NONE
   LOGICAL, INTENT(in) :: gamma_only
   INTEGER :: ik, ngm_, ngs_
+  INTEGER :: ngw_, ngml_, ngsl_, ngwl_
   LOGICAL :: lpara
   !
   lpara =  ( nproc_bgrp > 1 )
@@ -55,6 +63,13 @@ SUBROUTINE data_structure( gamma_only )
   ! ... find maximum value among all the processors
   !
   CALL mp_max (gkcut, inter_pool_comm )
+  if (do_fde .and. linterlock) then
+     gkcut = 0.d0
+     CALL pstickset_large( gamma_only, bgl, gcutml, gkcut, gcutml, &
+                  dfftl, dfftl, ngwl_ , ngml_ , ngsl_ , me_lgrp, &
+                  root_lgrp, nproc_lgrp, intra_lgrp_comm, ntask_groups )
+     call gvecl_init( ngml_ , intra_lgrp_comm )
+  endif
   !
   ! ... set up fft descriptors, including parallel stuff: sticks, planes, etc.
   !

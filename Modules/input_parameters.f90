@@ -323,9 +323,10 @@ MODULE input_parameters
         REAL(DP):: tot_charge = 0.0_DP
           ! total system charge
 
-        REAL(DP) :: tot_magnetization = -1.0_DP
+        REAL(DP) :: tot_magnetization = 0._DP
           ! majority - minority spin.
           ! A value < 0 means unspecified
+        LOGICAL :: two_fermi_energies = .false.
 
         REAL(DP) :: ecutwfc = 0.0_DP
           ! energy cutoff for wave functions in k-space ( in Rydberg )
@@ -571,7 +572,41 @@ MODULE input_parameters
         INTEGER :: esm_debug_gpmax = 0
           ! if esm_debug is .TRUE., calculate v_hartree and v_local
           ! for abs(gp)<=esm_debug_gpmax (gp is integer and has tpiba unit)
-
+        CHARACTER(len=80) :: fde_kin_funct = 'LC94'
+        CHARACTER(len=80) :: fde_xc_funct = 'SAME'
+          ! FDE non-additive kinetic energy and XC functionals
+        INTEGER :: fde_nspin = 1
+        LOGICAL :: fde_print_density = .false.
+        LOGICAL :: fde_print_density_frag = .false.
+        LOGICAL :: fde_print_density_frag_large = .false.
+        LOGICAL :: fde_print_embedpot = .false.
+        LOGICAL :: fde_print_allpot = .false.
+        LOGICAL :: fde_print_electro = .false.
+          ! FDE self-interaction corr. for radicals
+        LOGICAL  :: fde_si = .false.
+        LOGICAL  :: fde_si_all2all = .false.
+        REAL(DP) :: fde_si_alpha = 0.d0
+        REAL(DP) :: fde_gp = 0.d0
+        REAL(DP) :: fde_r0 = 0.d0
+        REAL(DP) :: fde_gp_rhot = 0.d0
+        REAL(DP) :: fde_gp_alpha = 0.d0
+        LOGICAL  :: fde_split_mix = .false.
+        LOGICAL  :: fde_regrho = .false.
+        LOGICAL  :: fde_fractional = .false.
+        LOGICAL  :: fde_fractional_onlyalpha = .false.
+        LOGICAL  :: fde_fractional_onlybeta = .true.
+        REAL(DP) :: fde_fractional_mixing = 0.0d0
+        REAL(DP) :: fde_fractional_minEtransfer = 0.0d0
+        REAL(DP) :: fde_fractional_maxEtransfer = 0.0d0
+        INTEGER  :: fde_fractional_cycle = 1
+        LOGICAL  :: fde_overlap = .false.
+        REAL(DP) :: fde_overlap_c = 0.0d0
+          ! interlocking supercell     
+        real(dp) :: fde_cell_split(3) = 1.0
+        logical  :: fde_do_pot_onlarge = .true.
+        !
+        !Hack2018
+        !
         REAL(DP) :: fcp_mu         = 0.0_DP
           ! target Fermi energy
 
@@ -617,8 +652,6 @@ MODULE input_parameters
           ! in rhombohedral axes. If .FALSE. in hexagonal axes, that are
           ! converted internally in rhombohedral axes.  
           !
-
-
         NAMELIST / system / ibrav, celldm, a, b, c, cosab, cosac, cosbc, nat, &
              ntyp, nbnd, ecutwfc, ecutrho, nr1, nr2, nr3, nr1s, nr2s,         &
              nr3s, nr1b, nr2b, nr3b, nosym, nosym_evc, noinv, use_all_frac,   &
@@ -638,6 +671,7 @@ MODULE input_parameters
              constrained_magnetization, B_field, fixed_magnetization,         &
              sic, sic_epsilon, force_pairing, sic_alpha,                      &
              tot_charge, tot_magnetization, spline_ps, one_atom_occupations,  &
+             two_fermi_energies,                                              &
              vdw_corr, london, london_s6, london_rcut, london_c6, london_rvdw,&
              dftd3_s6, dftd3_rs6, dftd3_s18, dftd3_rs18, dftd3_alp,           &
              dftd3_version,                                                   &
@@ -645,6 +679,16 @@ MODULE input_parameters
              xdm, xdm_a1, xdm_a2,                                             &
              step_pen, A_pen, sigma_pen, alpha_pen, no_t_rev,                 &
              esm_bc, esm_efield, esm_w, esm_nfit, esm_debug, esm_debug_gpmax, &
+             fde_kin_funct, fde_xc_funct, fde_nspin, fde_print_density,       &
+             fde_print_embedpot, fde_print_density_frag, fde_print_electro,   &
+             fde_print_density_frag_large, fde_si,                            &
+             fde_split_mix, fde_regrho, fde_overlap, fde_overlap_c, fde_gp,   &
+             fde_r0, fde_gp_rhot, fde_fractional, fde_fractional_onlyalpha,   &
+             fde_fractional_onlybeta,                                         &
+             fde_fractional_minEtransfer, fde_fractional_mixing,              &
+             fde_fractional_maxEtransfer, fde_fractional_cycle,               &
+             fde_gp_alpha, fde_print_allpot, fde_si_all2all, fde_si_alpha,    &
+             fde_cell_split, fde_do_pot_onlarge,                              &
              esm_a, esm_zb, fcp_mu, fcp_mass, fcp_tempw, fcp_relax,           &
              fcp_relax_step, fcp_relax_crit, fcp_mdiis_size, fcp_mdiis_step,  &
              space_group, uniqueb, origin_choice, rhombohedral,               &
@@ -965,7 +1009,20 @@ MODULE input_parameters
         LOGICAL :: occupation_constraints = .false.
           ! If true perform CP dynamics with constrained occupations
           ! to be used together with penalty functional ...
-
+       LOGICAL :: fde_fat = .false.
+       REAL(DP) :: fde_fat_thr = 1.E-_DP
+       INTEGER :: fde_fat_maxstep = 0
+       LOGICAL :: fde_init_rho = .false.
+       REAL(DP) :: fde_fat_mixing = 1._DP
+       REAL(DP) :: fde_frag_charge = 0._DP
+       logical :: saop_add = .false.
+       logical :: saop_nadd = .false.
+       REAL(DP) :: saop_hirho = -0._DP
+       REAL(DP) :: saop_lorho = -7._DP
+       REAL(DP) :: saop_pow = 1._DP
+       REAL(DP) :: saop_frac = 1._DP
+         ! FDE 'Freeze and Thaw' input variables: on/off flag, and convergence thr
+       LOGICAL :: use_gaussians = .false.
         !
         ! ... CP-BO ...
         LOGICAL :: tcpbo = .FALSE.
@@ -1009,6 +1066,9 @@ MODULE input_parameters
           efield, epol2, efield2, diago_full_acc,                      &
           occupation_constraints, niter_cg_restart,                    &
           niter_cold_restart, lambda_cold, efield_cart, real_space,    &
+          fde_fat, fde_fat_thr, fde_fat_maxstep,                       &
+          fde_init_rho, fde_fat_mixing, fde_frag_charge, use_gaussians, &
+          saop_hirho, saop_lorho, saop_pow, saop_add, saop_nadd, saop_frac, &
           tcpbo,emass_emin, emass_cutoff_emin, electron_damping_emin,  &
           dt_emin, efield_phase
 
