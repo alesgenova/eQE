@@ -32,6 +32,11 @@ SUBROUTINE read_file()
   USE ldaU,                 ONLY : lda_plus_u, U_projection
   USE pw_restart,           ONLY : pw_readfile
   USE control_flags,        ONLY : io_level
+  USE input_parameters,     ONLY : fde_xc_funct
+! for debugging
+!  USE mp_images,       ONLY : nimage, my_image_id
+!  USE mp_bands,        ONLY : inter_bgrp_comm, nbgrp
+!  USE mp_pools,        ONLY : nproc_pool, me_pool
   USE klist,                ONLY : init_igk
   USE gvect,                ONLY : ngm, g
   USE gvecw,                ONLY : gcutw
@@ -118,6 +123,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE kinds,                ONLY : DP
   USE ions_base,            ONLY : nat, nsp, ityp, tau, if_pos, extfor
   USE cell_base,            ONLY : tpiba2, alat,omega, at, bg, ibrav
+  USE large_cell_base,      ONLY : alatl => alat, omegal => omega, atl => at, bgl => bg, ibravl => ibrav!, tpiba2 => tpiba2
   USE force_mod,            ONLY : force
   USE klist,                ONLY : nkstot, nks, xk, wk
   USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
@@ -126,16 +132,24 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE extfield,             ONLY : forcefield, tefield, gate, forcegate
   USE cellmd,               ONLY : cell_factor, lmovecell
   USE fft_base,             ONLY : dfftp
+  USE fft_base,             ONLY : dfftl, dffts
   USE fft_interfaces,       ONLY : fwfft
+  USE grid_subroutines,     ONLY : realspace_grids_init       !Hack2018
+  USE grid_subroutines,     ONLY : realspace_supergrid_init
   USE fft_types,            ONLY : fft_type_allocate
   USE recvec_subs,          ONLY : ggen, ggens
+  USE recvecl_subs,         ONLY : ggen_large
   USE gvect,                ONLY : gg, ngm, g, gcutm, mill, &
                                    eigts1, eigts2, eigts3, nl, gstart
+  USE gvecl,                ONLY : ggl => gg, ngml => ngm, gl => g, gcutml => gcutm, &
+                                   eigts1l => eigts1, eigts2l => eigts2, eigts3l => eigts3, nll => nl, gstartl => gstart
   USE Coul_cut_2D,          ONLY : do_cutoff_2D, cutoff_fact
   USE fft_base,             ONLY : dfftp, dffts
   USE gvecs,                ONLY : ngms, nls, gcutms 
   USE spin_orb,             ONLY : lspinorb, domag
   USE scf,                  ONLY : rho, rho_core, rhog_core, v
+  USE scf,                  ONLY : vltot
+  use scf_large,            only : vltot_large => vltot
   USE wavefunctions_module, ONLY : psic
   USE vlocal,               ONLY : strf
   USE io_files,             ONLY : tmp_dir, prefix, iunpun, nwordwfc, iunwfc
@@ -148,11 +162,23 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE paw_variables,        ONLY : okpaw, ddd_PAW
   USE paw_init,             ONLY : paw_init_onecenter, allocate_paw_internals
   USE ldaU,                 ONLY : lda_plus_u, eth, init_lda_plus_u
+  USE ldaU,                 ONLY : oatwfc
   USE control_flags,        ONLY : gamma_only
   USE funct,                ONLY : get_inlc, get_dft_name
+  USE funct,                ONLY : dft_is_nonlocc
   USE kernel_table,         ONLY : initialize_kernel_table
   USE esm,                  ONLY : do_comp_esm, esm_init
   USE mp_bands,             ONLY : intra_bgrp_comm, nyfft
+  USE fde
+  USE fde_routines
+  USE input_parameters,     ONLY : fde_xc_funct
+! for debugging
+  USE mp_images,            ONLY : nimage, my_image_id, intra_image_comm, inter_fragment_comm
+!  USE mp_bands,        ONLY : inter_bgrp_comm, nbgrp
+!  USE mp_pools,        ONLY : nproc_pool, me_pool
+  use mp,                   only : mp_sum, mp_barrier, mp_bcast
+!  use mp_world,                 only : world_comm
+  use io_global,            only : stdout, ionode, ionode_id
   !
   IMPLICIT NONE
 
@@ -187,6 +213,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   CALL pw_readfile( 'dim',   ierr )
   CALL errore( 'read_xml_file ', 'problem reading file ' // &
              & TRIM( tmp_dir ) // TRIM( prefix ) // '.save', ierr )
+  CALL flush_unit(stdout)
   !
   ! ... allocate space for atomic positions, symmetries, forces
   !
@@ -196,6 +223,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   !
   ALLOCATE( ityp( nat ) )
   ALLOCATE( tau(    3, nat ) )
+  if (do_fde)  ALLOCATE(tau_large(3, nat))
   ALLOCATE( if_pos( 3, nat ) )
   ALLOCATE( force(  3, nat ) )
   ALLOCATE( extfor(  3, nat ) )
@@ -241,6 +269,14 @@ SUBROUTINE read_xml_file_internal(withbs)
   !
   IF  ( withbs .EQV. .TRUE. ) THEN  
      CALL pw_readfile( 'nowave', ierr )
+     if (do_fde.and..not.linterlock) deallocate(tau_large)
+     CALL set_dimensions()
+     if (do_fde) then
+        call realspace_supergrid_init&
+        ( dfftl, dfftp, atl, bgl, gcutml, frag_cell_split, fde_frag_split_type, fde_max_divisor, fde_split_types )
+     endif
+! repeat second time just in case
+  CALL realspace_grids_init ( dfftp, dffts, at, bg, gcutm, gcutms )
   ELSE
      CALL pw_readfile( 'nowavenobs', ierr )
   END IF
@@ -282,9 +318,32 @@ SUBROUTINE read_xml_file_internal(withbs)
   !
   ! ... read the vdw kernel table if needed
   !
-  inlc = get_inlc()
-  if (inlc > 0 ) then
-      call initialize_kernel_table(inlc)
+  if (dft_is_nonlocc()) then
+  if (do_fde) then
+        if (trim(fde_xc_funct) == 'SAME' ) then
+           inlc = get_inlc()
+        elseif (trim(fde_xc_funct) == 'RVV10' ) then
+           inlc = 3
+        elseif (trim(fde_xc_funct) == 'REV-VDW-DF2' .or. &
+                trim(fde_xc_funct) == 'VDW-DF2-C09' .or. &
+                trim(fde_xc_funct) == 'VDW-DF2' ) then
+           inlc = 2
+        elseif (trim(fde_xc_funct) == 'VDW-DF4'    .or. &
+                trim(fde_xc_funct) == 'VDW-DF3'    .or. &
+                trim(fde_xc_funct) == 'VDW-DF-C09' .or. &
+                trim(fde_xc_funct) == 'VDW-DF' ) then
+           inlc = 1
+        else
+           inlc = 0
+        endif
+        if (inlc > 0) call initialize_kernel_table(inlc)
+  else 
+        inlc = get_inlc()
+        if (inlc > 0) call initialize_kernel_table(inlc)
+  endif
+
+  !if (trim(fde_xc_funct) /= 'SAME' .and. inlc .ne. 0) inlc = 0
+
   endif
   !
   okpaw = ANY ( upf(1:nsp)%tpawp )
@@ -296,23 +355,41 @@ SUBROUTINE read_xml_file_internal(withbs)
   CALL pre_init()
   CALL data_structure ( gamma_only )
   CALL allocate_fft()
+  if ( do_fde ) call allocate_fft_large()
+  ! moved allocate_fde earlier, because set_rhoc needs some "large". cannot be earlier than allocate_fft because allocate_fde needs ngm.
+  if (do_fde)  then
+       call allocate_fde
+       !
+       ! fde_cell_offset , tau , tau_large are all read from xml, no need to call local_offset again
+       !if ( linterlock) call get_local_offset(fde_cell_offset,fde_cell_shift,frag_cell_split)
+  endif
+  allocate( fde_si_vec(nfragments) )
+  fde_si_vec=0
+  if (fde_si) fde_si_vec(currfrag) = 1
+  if (ionode) call mp_sum( fde_si_vec, inter_fragment_comm )
+  call mp_bcast( fde_si_vec, ionode_id, intra_image_comm )
   CALL ggen ( dfftp, gamma_only, at, bg ) 
+  if ( do_fde ) call ggen_large( gamma_only, atl, bgl )
   CALL ggens( dffts, gamma_only, at, g, gg, mill, gcutms, ngms ) 
   IF (do_comp_esm) THEN
     CALL pw_readfile( 'esm', ierr )
     CALL esm_init()
   END IF
   CALL gshells ( lmovecell ) 
+  if ( do_fde ) call gshells_large( lmovecell )
+  ! Not sure here is the best place to initialize the datatype, but let's se...
+  if (do_fde) call gen_simulation_cells()
   !
   ! ... allocate the potential and wavefunctions
   !
-  CALL allocate_locpot()
   CALL allocate_nlpot()
   IF (okpaw) THEN
      CALL allocate_paw_internals()
      CALL paw_init_onecenter()
      CALL d_matrix(d1,d2,d3)
   ENDIF
+  CALL allocate_locpot()
+  if (do_fde ) call allocate_locpot_large()
   !
   IF ( lda_plus_u ) THEN
      CALL init_lda_plus_u ( upf(1:nsp)%psd, noncolin )
@@ -327,14 +404,38 @@ SUBROUTINE read_xml_file_internal(withbs)
   ! ... re-calculate the local part of the pseudopotential vltot
   ! ... and the core correction charge (if any) - This is done here
   ! ... for compatibility with the previous version of read_file
-  !
+  IF (do_fde) CALL fde_summary
   ! 2D calculations: re-initialize cutoff fact before calculating potentials
   IF(do_cutoff_2D) CALL cutoff_fact()
   !
   CALL init_vloc()
+  if (do_fde) then
+!     tau_large = tau
+     !call get_local_offset(fde_cell_offset,fde_cell_shift,frag_cell_split)
+     call init_vloc_large()
+  endif
   CALL struc_fact( nat, tau, nsp, ityp, ngm, g, bg, dfftp%nr1, dfftp%nr2, &
                    dfftp%nr3, strf, eigts1, eigts2, eigts3 )
+! this part copies from hinit0, where it's between struc_fact and setlocal
+  if (do_fde ) then 
+     strf_fde(:,:) = strf(:,:)
+     !
+     if (linterlock) then
+        CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
+                   dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
+        call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
+        call setlocal_fde_large(vltot_large, strf_fde_large)
+     else 
+!        CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngm, g, bg, &
+!              dfftp%nr1, dfftp%nr2, dfftp%nr3, strf_fde, eigts1, eigts2, eigts3 )
+        do nt = 1, nsp
+            call c_grid_gather_sum_scatter( strf_fde(:,nt) )
+        end do
+     endif
+  endif
+! END: this part copies from hinit0, where it's between struc_fact and setlocal
   CALL setlocal()
+  if (do_fde) call copy_pot_l2f(vltot_large, vltot)
   CALL set_rhoc()
   !
   ! ... bring rho to G-space
@@ -346,8 +447,10 @@ SUBROUTINE read_xml_file_internal(withbs)
      rho%of_g(:,is) = psic(nl(:))
      !
   END DO
+  if (do_fde) call update_rho_fde(rho, .true.)
   !
   ! ... read info needed for hybrid functionals
+  call flush_unit(stdout)
   !
   CALL pw_readfile('exx', ierr)
   !
@@ -369,6 +472,7 @@ SUBROUTINE read_xml_file_internal(withbs)
       USE cell_base, ONLY : alat, tpiba, tpiba2
       USE gvect,     ONLY : ecutrho, gcutm
       USE gvecs,     ONLY : gcutms, dual, doublegrid
+      use gvecl,     ONLY : gcutml => gcutm
       USE gvecw,     ONLY : gcutw, ecutwfc
       !
       !
@@ -389,6 +493,7 @@ SUBROUTINE read_xml_file_internal(withbs)
       ELSE
          gcutms = gcutm
       END IF
+      if (do_fde .and. linterlock) gcutml = gcutm
       !
     END SUBROUTINE set_dimensions
     !
