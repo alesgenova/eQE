@@ -50,6 +50,9 @@ module funct
   PUBLIC  :: get_iexch, get_icorr, get_igcx, get_igcc, get_meta, get_inlc
   PUBLIC  :: dft_is_gradient, dft_is_meta, dft_is_hybrid, dft_is_nonlocc, igcc_is_lyp
 
+  ! routines to switch XC functional of the fly (Used by FDE)
+  PUBLIC  :: set_iexch, set_icorr, set_igcx, set_igcc, set_inlc
+
   ! additional subroutines/functions for hybrid functionals
   PUBLIC  :: start_exx, stop_exx, get_exx_fraction, exx_is_active
   PUBLIC  :: set_exx_fraction, dft_force_hybrid
@@ -68,6 +71,7 @@ module funct
   PUBLIC  :: dgcxc, dgcxc_spin
   PUBLIC  :: d3gcxc       
   PUBLIC  :: nlc
+  PUBLIC  :: nlc_large
   ! vector XC driver
   PUBLIC  :: evxc_t_vec, gcx_spin_vec
   !
@@ -353,7 +357,7 @@ module funct
 
 CONTAINS
   !-----------------------------------------------------------------------
-  subroutine set_dft_from_name( dft_ )
+  subroutine set_dft_from_name( dft_,nochecks_ )
     !-----------------------------------------------------------------------
     !
     ! translates a string containing the exchange-correlation name
@@ -361,9 +365,12 @@ CONTAINS
     !
     implicit none
     character(len=*), intent(in) :: dft_
+	logical , intent(in) , optional :: nochecks_
+
     integer :: len, l, i
     character (len=50):: dftout
     logical :: dft_defined = .false.
+    logical :: nochecks = .false.
     character (len=1), external :: capital
     integer ::  save_iexch, save_icorr, save_igcx, save_igcc, save_meta, save_inlc
     !
@@ -371,6 +378,7 @@ CONTAINS
     !
     if ( discard_input_dft ) return
     !
+    IF ( PRESENT(nochecks_) ) nochecks = nochecks_
     ! save current status of XC indices
     !
     save_iexch = iexch
@@ -614,6 +622,9 @@ CONTAINS
        call errore('set_dft_from_name','functional not yet implemented',1)
 
     END IF
+
+    if (nochecks) return
+
 
     !
     ! ----------------------------------------------------------------
@@ -905,11 +916,23 @@ CONTAINS
      return
   end function get_iexch
   !-----------------------------------------------------------------------
+  subroutine set_iexch ( value )
+     integer , intent(in) :: value
+     iexch = value
+     return
+  end subroutine set_iexch
+  !-----------------------------------------------------------------------
   function get_icorr ()
      integer get_icorr
      get_icorr = icorr
      return
   end function get_icorr
+  !-----------------------------------------------------------------------
+  subroutine set_icorr ( value )
+     integer , intent(in) :: value
+     icorr = value
+     return
+  end subroutine set_icorr
   !-----------------------------------------------------------------------
   function get_igcx ()
      integer get_igcx
@@ -917,12 +940,24 @@ CONTAINS
      return
   end function get_igcx
   !-----------------------------------------------------------------------
+  subroutine set_igcx ( value )
+     integer , intent(in) :: value
+     igcx = value
+     return
+  end subroutine set_igcx
+  !-----------------------------------------------------------------------
   function get_igcc ()
      integer get_igcc
      get_igcc = igcc
      return
   end function get_igcc
   !-----------------------------------------------------------------------
+  subroutine set_igcc ( value )
+     integer , intent(in) :: value
+     igcc = value
+     return
+  end subroutine set_igcc
+  !--------------------------------
   function get_meta ()
      integer get_meta
      get_meta = imeta
@@ -941,6 +976,12 @@ CONTAINS
      return
   end function get_nonlocc_name
  !-----------------------------------------------------------------------
+  subroutine set_inlc ( value )
+     integer , intent(in) :: value
+     inlc = value
+     return
+  end subroutine set_inlc
+  !-----------------------------------------------------------------------
   function dft_is_nonlocc ()
     logical :: dft_is_nonlocc
     dft_is_nonlocc = isnonlocc
@@ -2687,6 +2728,47 @@ subroutine nlc (rho_valence, rho_core, nspin, enl, vnl, v)
   !
   return
 end subroutine nlc
+
+subroutine nlc_large (rho_valence, rho_core, nspin, enl, vnl, v, inlc_l)
+  !-----------------------------------------------------------------------
+  !     non local correction for the correlation
+  !
+  !     input:  rho_valence, rho_core
+  !     definition:  E_nl = \int E_nl(rho',grho',rho'',grho'',|r'-r''|) dr
+  !     output: enl = E_nl
+  !             vnl= D(E_x)/D(rho)
+  !             v  = Correction to the potential
+  !
+
+  USE vdW_DF_large, ONLY: xc_vdW_DF_large, vdw_type_large
+  USE rVV10_large,  ONLY: xc_rVV10_large
+
+  implicit none
+
+  REAL(DP), INTENT(IN) :: rho_valence(:,:), rho_core(:)
+  INTEGER, INTENT(IN)  :: nspin, inlc_l
+  REAL(DP), INTENT(INOUT) :: v(:,:)
+  REAL(DP), INTENT(INOUT) :: enl, vnl
+
+  inlc = inlc_l
+
+  if (inlc == 1 .or. inlc == 2) then
+
+     vdw_type_large = inlc
+     call xc_vdW_DF_large(rho_valence, rho_core, nspin, enl, vnl, v)
+
+  elseif (inlc == 3) then
+
+      call xc_rVV10_large(rho_valence, rho_core, nspin, enl, vnl, v)
+
+  else
+     enl = 0._DP
+     vnl = 0._DP
+     v = 0._DP
+  endif
+  !
+  return
+end subroutine nlc_large
 
 !
 !-----------------------------------------------------------------------
