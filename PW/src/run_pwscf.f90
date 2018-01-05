@@ -49,6 +49,21 @@ SUBROUTINE run_pwscf ( exit_status )
   USE qmmm,             ONLY : qmmm_initialization, qmmm_shutdown, &
                                qmmm_update_positions, qmmm_update_forces
   USE qexsd_module,     ONLY:   qexsd_set_status
+  USE mp,               ONLY : mp_barrier
+  USE mp_world,         ONLY : world_comm
+  USE fde,              ONLY : do_fde, fde_print_density, fde_print_embedpot,& 
+                               fde_print_density_frag, fde_print_allpot, &
+                               rho_fde_large, rho_core_fde_large, currfrag, &
+                               fde_print_density_frag_large, &
+                               fde_printdensity_vec, &
+                               fde_plotemb_vec, fde_print_electro, &
+                               nonlocalkernel, nonlocalkernel_fde
+  use fde_routines
+  use kernel_routines,  only : deletekernel
+  USE noncollin_module, ONLY : report, i_cons, noncolin
+  USE spin_orb,         ONLY : domag
+  use lsda_mod ,        only : nspin
+  use dynamics_module,  only : trajectory
   !
   IMPLICIT NONE
   INTEGER, INTENT(OUT) :: exit_status
@@ -115,6 +130,8 @@ SUBROUTINE run_pwscf ( exit_status )
      ELSE
         CALL electrons()
      END IF
+     ! FDE
+     if (do_fde) call mp_barrier(world_comm)
      !
      ! ... code stopped by user or not converged
      !
@@ -124,6 +141,12 @@ SUBROUTINE run_pwscf ( exit_status )
         CALL qexsd_set_status(exit_status)
         ! workaround for the case of a single k-point
         twfcollect = .FALSE.
+        ! Uncomment if debugging and want to know how the density looks like even when
+        ! calculation fails
+        ! if (do_fde) then
+        ! if (fde_print_density.or.fde_print_density_frag) call fde_plot_density
+        ! if (fde_print_embedpot) call fde_plot_embedpot
+        ! endif
         CALL punch( 'config' )
         RETURN
      ENDIF
@@ -167,6 +190,20 @@ SUBROUTINE run_pwscf ( exit_status )
         ! ... ionic step (for molecular dynamics or optimization)
         !
         CALL move_ions ( idone )
+        !
+        ! write the coordinates of the whole system to file
+        if (do_fde) call trajectory()
+        !
+        ! ... since the ions moved, we need to call make_pointlists again
+        !
+        IF ( ( (report.ne.0).or.(i_cons.ne.0) ) .and. (noncolin.and.domag) &
+                      .or. (i_cons.eq.1) .or. nspin==2 ) THEN
+        !
+        ! In order to print out local quantities, integrated around the atoms,
+        ! we need the following variables
+        !
+           CALL make_pointlists ( )
+        ENDIF
         !
         ! ... then we save restart information for the new configuration
         !
@@ -216,6 +253,24 @@ SUBROUTINE run_pwscf ( exit_status )
   !
   CALL qexsd_set_status(exit_status)
   CALL punch('all')
+  if (do_fde) then
+    call mp_barrier(world_comm)
+    !
+    !call test_sum_band_selective()
+    !
+    if ( sum(fde_printdensity_vec(:)) > 0 .or. &
+         fde_print_density .or. &
+         fde_print_density_frag .or. &
+         fde_print_density_frag_large) call fde_plot_density
+    if ( sum(fde_plotemb_vec(:)) > 0 ) call fde_plot_embedpot
+    !if (fde_print_embedpot) call fde_plot_embedpot
+    if (fde_print_allpot) call fde_plot_allpot
+    if (fde_print_electro) call fde_plot_electrostatics
+
+    call DeleteKernel(NonlocalKernel)
+    call DeleteKernel(NonlocalKernel_fde)
+
+  endif
   !
   CALL qmmm_shutdown()
   !

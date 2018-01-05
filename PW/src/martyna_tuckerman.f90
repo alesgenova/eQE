@@ -41,6 +41,7 @@ CONTAINS
 !----------------------------------------------------------------------------
   SUBROUTINE wg_corr_h( omega, ngm, rho, v, eh_corr )
 !----------------------------------------------------------------------------
+  use fde, only : linterlock, do_fde
   INTEGER, INTENT(IN) :: ngm
   REAL(DP), INTENT(IN) :: omega
   COMPLEX(DP), INTENT(IN)  :: rho(ngm)
@@ -49,7 +50,13 @@ CONTAINS
 
   INTEGER :: ig
 
-  IF (.NOT.wg_corr_is_updated) CALL init_wg_corr
+  IF (.NOT.wg_corr_is_updated) then
+    if (do_fde .and. linterlock) then
+      call init_wg_corr_large
+    else
+      call init_wg_corr
+    endif
+  ENDIF
 !
   v(:) = (0._dp,0._dp)
 
@@ -67,13 +74,20 @@ CONTAINS
 !----------------------------------------------------------------------------
   SUBROUTINE wg_corr_loc( omega, ntyp, ngm, zv, strf, v )
 !----------------------------------------------------------------------------
+  use fde, only : linterlock, do_fde
   INTEGER, INTENT(IN) :: ntyp, ngm
   REAL(DP), INTENT(IN) :: omega, zv(ntyp)
   COMPLEX(DP), INTENT(IN) :: strf(ngm,ntyp)
   COMPLEX(DP), INTENT(OUT) :: v(ngm)
   INTEGER :: ig
 
-  IF (.NOT.wg_corr_is_updated) CALL init_wg_corr
+  IF (.NOT.wg_corr_is_updated) then
+    if (do_fde .and. linterlock) then
+       CALL init_wg_corr_large
+    else
+       CALL init_wg_corr
+    endif
+  ENDIF
 !
   do ig=1,ngm
      v(ig) = - e2 * wg_corr(ig) * SUM(zv(1:ntyp)*strf(ig,1:ntyp)) / omega
@@ -89,6 +103,7 @@ CONTAINS
   USE cell_base, ONLY : tpiba
   USE mp_bands,  ONLY : intra_bgrp_comm
   USE mp,        ONLY : mp_sum
+  use fde, only : linterlock, do_fde
   INTEGER, INTENT(IN) :: nat, ntyp, ityp(nat), ngm, nspin
   REAL(DP), INTENT(IN) :: omega, zv(ntyp), tau(3,nat), g(3,ngm)
   COMPLEX(DP), INTENT(IN) :: strf(ngm,ntyp), rho(ngm,nspin)
@@ -101,8 +116,13 @@ CONTAINS
   COMPLEX(DP), ALLOCATABLE :: v(:)
   COMPLEX(DP) :: rho_tot
   !
-  IF (.NOT.wg_corr_is_updated) CALL init_wg_corr
-  !
+  IF (.NOT.wg_corr_is_updated) then
+    if (do_fde .and. linterlock) then
+       CALL init_wg_corr_large
+    else
+       CALL init_wg_corr
+    endif
+  ENDIF  !
   allocate ( v(ngm) )
   do ig=1,ngm
      rho_tot = rho(ig,1)
@@ -254,7 +274,158 @@ CONTAINS
 
   RETURN
 
-  END SUBROUTINE init_wg_corr 
+  END SUBROUTINE init_wg_corr
+!----------------------------------------------------------------------------
+SUBROUTINE init_wg_corr_large
+!----------------------------------------------------------------------------
+  USE mp_bands,      ONLY : me_bgrp
+  USE fft_base,      ONLY : dfftp => dfftl
+  USE fft_interfaces,ONLY : fwfft, invfft
+  USE control_flags, ONLY : gamma_only_ => gamma_only
+  USE gvecl,         ONLY : ngm, gg, gstart_ => gstart, nl, nlm, ecutrho
+  USE large_cell_base,     ONLY : at, alat, tpiba2, omega
+
+  INTEGER :: idx0, idx, ir, i,j,k, ig, nt
+  REAL(DP) :: r(3), rws, upperbound, rws2
+  COMPLEX (DP), ALLOCATABLE :: aux(:)
+  REAL(DP), EXTERNAL :: qe_erfc
+#ifdef TESTING
+  REAL(DP), ALLOCATABLE :: plot(:)
+  CHARACTER (LEN=25) :: filplot
+  LOGICAL, SAVE :: first = .TRUE.
+#endif
+
+  IF ( ALLOCATED(wg_corr) ) DEALLOCATE(wg_corr)
+  ALLOCATE(wg_corr(ngm))
+  !
+  ! choose alpha in order to have convergence in the sum over G
+  ! upperbound is a safe upper bound for the error in the sum over G
+  !
+  alpha = 2.9d0
+  upperbound = 1._dp
+  DO WHILE ( upperbound > 1.e-_dp) 
+     alpha = alpha - 0._dp  
+     if (alpha<=0._dp) call errore('init_wg_corr','optimal alpha not found',1)
+     upperbound = e2 * sqrt (2.d0 * alpha / tpi) * &
+                       qe_erfc ( sqrt ( ecutrho / 4.d0 / alpha) )
+  END DO
+  beta = 0._dp/alpha ! 1._dp/alpha
+  ! write (*,*) " alpha, beta MT = ", alpha, beta
+  !
+  call ws_init(at,ws)
+  !
+  gstart = gstart_
+  gamma_only = gamma_only_
+  !
+  ! Index for parallel summation
+  !
+#if defined (__MPI)
+  idx0 = dfftp%nr1x*dfftp%nr2x*dfftp%ipp(me_bgrp+1)
+#else
+  idx0 = 0 
+#endif
+  !
+  ALLOCATE (aux(dfftp%nnr))
+  aux = CMPLX(0._dp,0._dp)
+  DO ir = 1, dfftp%nr1x*dfftp%nr2x * dfftp%npl
+     !
+     ! ... three dimensional indices
+     !
+     idx = idx0 + ir - 1
+     k   = idx / (dfftp%nr1x*dfftp%nr2x)
+     idx = idx - (dfftp%nr1x*dfftp%nr2x)*k
+     j   = idx / dfftp%nr1x
+     idx = idx - dfftp%nr1x*j
+     i   = idx
+
+     r(:) = ( at(:,1)/dfftp%nr1*i + at(:,2)/dfftp%nr2*j + at(:,3)/dfftp%nr3*k )
+
+     rws = ws_dist(r,ws)
+#ifdef TESTING
+     rws2 = ws_dist_stupid(r,ws)
+     if (abs (rws-rws2) > 1.e-5 ) then
+        write (*,'(4i8)') ir, i,j,k
+        write (*,'(5f14.8)') r(:), rws, rws2
+        stop
+     end if
+#endif
+
+     aux(ir) = smooth_coulomb_r( rws*alat )
+
+  END DO
+
+  CALL fwfft ('Custom', aux, dfftp)
+
+  do ig =1, ngm
+     wg_corr(ig) = omega * REAL(aux(nl(ig))) - smooth_coulomb_g( tpiba2*gg(ig))
+  end do
+  wg_corr(:) =  wg_corr(:) * exp(-tpiba2*gg(:)*beta/4._dp)**2
+  !
+  if (gamma_only) wg_corr(gstart:ngm) = 2.d0 * wg_corr(gstart:ngm)
+!
+  wg_corr_is_updated = .true.
+ 
+#ifdef TESTING
+  if (first) then
+     ALLOCATE(plot(dfftp%nnr))
+
+     filplot = 'wg_corr_r'
+     CALL invfft ('Custom', aux, dfftp)
+     plot(:) = REAL(aux(:))
+     call  write_wg_on_file(filplot, plot)
+
+     filplot = 'wg_corr_g'
+     aux(:) = CMPLX(0._dp,0._dp)
+     do ig =1, ngm
+        aux(nl(ig))  = smooth_coulomb_g( tpiba2*gg(ig))/omega
+     end do
+     if (gamma_only) aux(nlm(1:ngm)) = CONJG( aux(nl(1:ngm)) )
+
+     CALL invfft ('Custom', aux, dfftp)
+     plot(:) = REAL(aux(:))
+     call  write_wg_on_file(filplot, plot)
+
+     filplot = 'wg_corr_diff'
+     aux(:) = CMPLX(0._dp,0._dp)
+     aux(nl(1:ngm)) = wg_corr(1:ngm) / omega
+     if (gamma_only) then
+        aux(:) = 0._dp * aux(:) 
+        aux(nlm(1:ngm)) = aux(nlm(1:ngm)) + CONJG( aux(nl(1:ngm)) )
+     end if
+     CALL invfft ('Custom', aux, dfftp)
+     plot(:) = REAL(aux(:))
+     call  write_wg_on_file(filplot, plot)
+
+     DEALLOCATE (plot)
+
+     first = .false.
+  end if
+#endif
+
+  DEALLOCATE (aux)
+
+  RETURN
+
+  END SUBROUTINE init_wg_corr_large
+!----------------------------------------------------------------------------
+  SUBROUTINE write_wg_on_file_large(filplot, plot)
+!----------------------------------------------------------------------------
+  USE fft_base,        ONLY : dfftp => dfftl
+  USE gvecl,           ONLY : gcutm
+  USE wvfct,           ONLY : ecutwfc
+  USE gvecs,         ONLY : dual
+  USE large_cell_base,       ONLY : at, alat, tpiba2, omega, ibrav, celldm
+  USE ions_base,       ONLY : zv, ntyp => nsp, nat, ityp, atm, tau
+  CHARACTER (LEN=25), INTENT(IN) :: filplot
+  REAL(DP) :: plot(dfftp%nnr)
+  CHARACTER (LEN=25) :: title
+  INTEGER :: plot_num=0, iflag=+1
+
+  CALL plot_io (filplot, title, dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, dfftp%nr1, dfftp%nr2, &
+     dfftp%nr3, nat, ntyp, ibrav, celldm, at, gcutm, dual, ecutwfc, plot_num, atm, &
+     ityp, zv, tau, plot, iflag)
+  RETURN
+  END SUBROUTINE write_wg_on_file_large
 !----------------------------------------------------------------------------
   SUBROUTINE write_wg_on_file(filplot, plot)
 !----------------------------------------------------------------------------
@@ -277,13 +448,21 @@ CONTAINS
 !----------------------------------------------------------------------------
   REAL(DP) FUNCTION wg_corr_ewald ( omega, ntyp, ngm, zv, strf )
 !----------------------------------------------------------------------------
+  use fde, only : linterlock, do_fde
   INTEGER, INTENT(IN) :: ntyp, ngm
   REAL(DP), INTENT(IN) :: omega, zv(ntyp)
   COMPLEX(DP), INTENT(IN) :: strf(ngm,ntyp)
   INTEGER :: ig
   COMPLEX(DP)  :: rhoion
 
-  IF (.NOT.wg_corr_is_updated) CALL init_wg_corr
+
+  IF (.NOT.wg_corr_is_updated) then
+    if (do_fde .and. linterlock) then
+       CALL init_wg_corr_large
+    else
+       CALL init_wg_corr
+    endif
+  ENDIF
 !
   wg_corr_ewald = 0._dp
   DO ig=1,ngm

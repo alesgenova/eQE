@@ -43,12 +43,17 @@
              !
         TYPE (sticks_map) :: smap
              !  Stick map descriptor
+        TYPE ( fft_dlay_descriptor ) :: dfftl ! descriptor for supersystem  grid
+             !  Dimensions of the 3D real and reciprocal space FFT grid
+             !  relative to the charge density and potential ("large" grid)
 
         SAVE
 
         PRIVATE
 
         PUBLIC :: dfftp, dffts, dfft3d, fft_type_descriptor
+        PUBLIC :: dfftl
+        PUBLIC :: grid_gather_large, grid_scatter_large
         PUBLIC :: dfftb, fft_box_descriptor, fft_base_info
         PUBLIC :: smap, pstickdealloc
 

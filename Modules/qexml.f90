@@ -87,6 +87,8 @@ MODULE qexml_module
   PUBLIC :: qexml_wfc_filename, qexml_create_directory, &
             qexml_kpoint_dirname, qexml_restart_dirname
   !
+  public :: qexml_write_fde, qexml_write_interlock, qexml_read_fde, qexml_read_interlock
+  !
 CONTAINS
 !
 !-------------------------------------------
@@ -4668,6 +4670,370 @@ CONTAINS
       IF ( present( nr3 ) )     nr3 = nr3_
       !
     END SUBROUTINE qexml_read_rho
+    !
+    !------------------------------------------------------------------------
+    SUBROUTINE qexml_write_fde( do_fde, nfragments, currfrag, fde_kin_funct, fde_xc_funct, &
+                                fde_frag_nspin, fde_nspin, use_gaussians, fde_si)
+      !------------------------------------------------------------------------
+      !
+      LOGICAL,            INTENT(IN) :: do_fde
+      INTEGER,            INTENT(IN) :: nfragments
+      INTEGER,            INTENT(IN) :: currfrag
+      CHARACTER(LEN=*),   INTENT(IN) :: fde_kin_funct
+      CHARACTER(LEN=*),   INTENT(IN) :: fde_xc_funct
+      INTEGER,            INTENT(IN) :: fde_frag_nspin
+      INTEGER,            INTENT(IN) :: fde_nspin
+      LOGICAL,            INTENT(IN) :: use_gaussians
+      LOGICAL,            INTENT(IN) :: fde_si
+      !
+      CALL iotk_write_begin( ounit, "FROZEN_DENSITY_EMBEDDING" )
+      !
+      CALL iotk_write_dat( ounit, "DO_FDE", do_fde )
+      CALL iotk_write_dat( ounit, "NFRAGMENTS", nfragments )
+      CALL iotk_write_dat( ounit, "CURRFRAG", currfrag )
+      CALL iotk_write_dat( ounit, "FDE_KIN_FUNCT", fde_kin_funct )
+      CALL iotk_write_dat( ounit, "FDE_XC_FUNCT", fde_xc_funct )
+      CALL iotk_write_dat( ounit, "FDE_FRAG_NSPIN", fde_frag_nspin )
+      CALL iotk_write_dat( ounit, "FDE_NSPIN", fde_nspin )
+      CALL iotk_write_dat( ounit, "USE_GAUSSIANS", use_gaussians )
+      CALL iotk_write_dat( ounit, "FDE_SI", fde_si )
+      !
+      CALL iotk_write_end( ounit, "FROZEN_DENSITY_EMBEDDING" )
+      !
+    END SUBROUTINE qexml_write_fde
+    !
+    !------------------------------------------------------------------------
+    SUBROUTINE qexml_write_interlock( linterlock, nr1l, nr2l, nr3l, nr1xl, nr2xl, nr3xl, ngml_g, ngml, &
+                              alat_units, alat, a_units, a1l, a2l, a3l, &
+                              b_units, b1l, b2l, b3l, &
+                              nat, tau, tau_units, fde_cell_offset, &
+                              frag_cell_split, fde_max_divisor, &
+                              fde_frag_split_type, pos_unit )
+      !------------------------------------------------------------------------
+      !
+      LOGICAL,            INTENT(IN) :: linterlock
+      INTEGER,            INTENT(IN) :: nr1l, nr2l, nr3l, ngml, nr1xl, nr2xl, nr3xl, ngml_g
+      CHARACTER(LEN=*),   INTENT(IN) :: alat_units 
+      CHARACTER(LEN=*),   INTENT(IN) :: a_units, b_units
+      REAL(DP),           INTENT(IN) :: alat
+      REAL(DP),           INTENT(in) :: a1l(3), a2l(3), a3l(3)
+      REAL(DP),           INTENT(in) :: b1l(3), b2l(3), b3l(3)
+      INTEGER,            INTENT(IN) :: nat
+      REAL(DP),           INTENT(IN) :: tau(3,nat)
+      CHARACTER(LEN=*),   INTENT(IN) :: tau_units 
+      INTEGER,            INTENT(IN) :: fde_cell_offset(3)
+      REAL(DP),           INTENT(IN) :: frag_cell_split(3)
+      INTEGER,            INTENT(IN) :: fde_max_divisor(3)
+      INTEGER,            INTENT(IN) :: fde_frag_split_type(3)
+      REAL(DP),           INTENT(IN) :: pos_unit
+      !
+      INTEGER           :: i
+      !
+      CALL iotk_write_begin( ounit, "INTERLOCKING_CELLS" )
+      !
+      CALL iotk_write_dat( ounit, "LINTERLOCK", linterlock )
+      !
+      CALL iotk_write_attr( attr, "nr1l", nr1l, FIRST = .true. )
+      CALL iotk_write_attr( attr, "nr2l", nr2l )
+      CALL iotk_write_attr( attr, "nr3l", nr3l )
+      CALL iotk_write_attr( attr, "nr1xl", nr1xl )
+      CALL iotk_write_attr( attr, "nr2xl", nr2xl )
+      CALL iotk_write_attr( attr, "nr3xl", nr3xl )
+      CALL iotk_write_empty( ounit, "LARGE_FFT_GRID", ATTR = attr )
+      !
+      CALL iotk_write_dat( ounit, "GVECL_NUMBER", ngml_g )
+
+      CALL iotk_write_dat( ounit, "VECL_NUMBER", ngml )
+      !
+      CALL iotk_write_attr( attr, "UNITS", trim(alat_units), FIRST = .true. )
+      CALL iotk_write_dat( ounit, "LATTICE_PARAMETER", alat, ATTR = attr )
+      !
+      CALL iotk_write_attr ( attr,   "UNITS", trim(a_units), FIRST = .true. )
+      CALL iotk_write_begin( ounit, "LARGE_DIRECT_LATTICE_VECTORS" )
+      CALL iotk_write_empty( ounit, "UNITS_FOR_LARGE_DIRECT_LATTICE_VECTORS", &
+                                     ATTR=attr )
+      CALL iotk_write_dat(   ounit, "a1l", a1l(:) * alat, COLUMNS=3 )
+      CALL iotk_write_dat(   ounit, "a2l", a2l(:) * alat, COLUMNS=3 )
+      CALL iotk_write_dat(   ounit, "a3l", a3l(:) * alat, COLUMNS=3 )
+      CALL iotk_write_end(   ounit, "LARGE_DIRECT_LATTICE_VECTORS" )
+      !
+      CALL iotk_write_attr ( attr,   "UNITS", trim(b_units), FIRST = .true. )
+      CALL iotk_write_begin( ounit, "LARGE_RECIPROCAL_LATTICE_VECTORS" )
+      CALL iotk_write_empty( ounit, "UNITS_FOR_LARGE_RECIPROCAL_LATTICE_VECTORS", &
+                                     ATTR=attr )
+      CALL iotk_write_dat(   ounit, "b1l", b1l(:), COLUMNS=3 )
+      CALL iotk_write_dat(   ounit, "b2l", b2l(:), COLUMNS=3 )
+      CALL iotk_write_dat(   ounit, "b3l", b3l(:), COLUMNS=3 )
+      CALL iotk_write_end(   ounit, "LARGE_RECIPROCAL_LATTICE_VECTORS" )
+      !
+      !
+      CALL iotk_write_attr( attr, "UNITS", trim(tau_units), FIRST = .true. )
+      CALL iotk_write_empty( ounit, "UNITS_FOR_LARGE_ATOMIC_POSITIONS", ATTR = attr )
+      !
+      DO i = 1, nat
+         !
+         !CALL iotk_write_attr( attr, "SPECIES", atm( ityp(i) ), FIRST = .true. )
+         !CALL iotk_write_attr( attr, "INDEX",  ityp(i) )
+         CALL iotk_write_attr( attr, "tau_large",    tau(:,i)*pos_unit, FIRST = .true. )
+         !CALL iotk_write_attr( attr, "if_pos", if_pos(:,i) )
+         CALL iotk_write_empty( ounit, "ATOM" // trim( iotk_index( i ) ), attr )
+         !
+      ENDDO
+     CALL iotk_write_dat( ounit, "fde_cell_offset", fde_cell_offset(:), COLUMNS=3 )
+     CALL iotk_write_dat( ounit, "frag_cell_split", frag_cell_split(:), COLUMNS=3 )
+     CALL iotk_write_dat( ounit, "fde_max_divisor", fde_max_divisor(:), COLUMNS=3 )
+     CALL iotk_write_dat( ounit, "fde_frag_split_type", fde_frag_split_type(:), COLUMNS=3 )
+      !
+      !
+      CALL iotk_write_end( ounit, "INTERLOCKING_CELLS" )
+      !
+    END SUBROUTINE qexml_write_interlock
+    !
+    !
+    !------------------------------------------------------------------------
+    SUBROUTINE qexml_read_fde( do_fde, nfragments, currfrag, fde_kin_funct, fde_xc_funct, &
+                               fde_frag_nspin, fde_nspin, use_gaussians, fde_si, ierr)
+      !----------------------------------------------------------------------
+      !
+      LOGICAL,            INTENT(OUT) :: do_fde
+      INTEGER,            INTENT(OUT) :: nfragments
+      INTEGER,            INTENT(OUT) :: currfrag
+      CHARACTER(LEN=*),   INTENT(OUT) :: fde_kin_funct
+      CHARACTER(LEN=*),   INTENT(OUT) :: fde_xc_funct
+      INTEGER,            INTENT(OUT) :: fde_frag_nspin
+      INTEGER,            INTENT(OUT) :: fde_nspin
+      LOGICAL,            INTENT(OUT) :: use_gaussians
+      LOGICAL,            INTENT(OUT) :: fde_si
+      INTEGER,            INTENT(OUT) :: ierr
+      !
+      !
+      ierr = 0
+      !
+      CALL iotk_scan_begin( iunit, "FROZEN_DENSITY_EMBEDDING", IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "DO_FDE", do_fde, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "NFRAGMENTS", nfragments, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "CURRFRAG", currfrag, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "FDE_KIN_FUNCT", fde_kin_funct, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "FDE_XC_FUNCT", fde_xc_funct, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "FDE_FRAG_NSPIN", fde_frag_nspin, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "FDE_NSPIN", fde_nspin, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "USE_GAUSSIANS", use_gaussians, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "FDE_SI", fde_si, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      CALL iotk_scan_end( iunit, "FROZEN_DENSITY_EMBEDDING", IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+    END SUBROUTINE qexml_read_fde
+    !
+    !------------------------------------------------------------------------
+    SUBROUTINE qexml_read_interlock( linterlock, nr1l, nr2l, nr3l, nr1xl, nr2xl, nr3xl, ngml_g, ngml, &
+                                          alat, a1, a2, a3, b1, b2, b3, &
+                                          alat_units, a_units, b_units, &
+                                          nat, tau, tau_units, fde_cell_offset, &
+                                          frag_cell_split, fde_max_divisor, fde_frag_split_type, ierr )
+      !------------------------------------------------------------------------
+      !
+      !CHARACTER(len=*),  OPTIONAL, INTENT(out) :: bravais_lattice
+      !REAL(DP),         OPTIONAL, INTENT(out) :: celldm(6), alat
+      LOGICAL,          OPTIONAL, INTENT(out) :: linterlock
+      INTEGER,          OPTIONAL, INTENT(out) :: nr1l, nr2l, nr3l, ngml, nr1xl, nr2xl, nr3xl, ngml_g
+      REAL(DP),         OPTIONAL, INTENT(out) :: alat
+      REAL(DP),         OPTIONAL, INTENT(out) :: a1(3), a2(3), a3(3)
+      REAL(DP),         OPTIONAL, INTENT(out) :: b1(3), b2(3), b3(3)
+      CHARACTER(len=*),  OPTIONAL, INTENT(out) :: alat_units, a_units, b_units, tau_units
+      !CHARACTER(len=*),  OPTIONAL, INTENT(out) :: es_corr
+      INTEGER,          INTENT(in)  :: nat
+      REAL(DP),         OPTIONAL, INTENT(out) :: tau(3,nat)
+      INTEGER,          OPTIONAL, INTENT(OUT) :: fde_cell_offset(3)
+      REAL(DP),         OPTIONAL, INTENT(OUT) :: frag_cell_split(3)
+      INTEGER,          OPTIONAL, INTENT(OUT) :: fde_max_divisor(3)
+      INTEGER,          OPTIONAL, INTENT(OUT) :: fde_frag_split_type(3)
+      INTEGER,                     INTENT(out) :: ierr
+      !
+      !CHARACTER(256)     :: bravais_lattice_
+      LOGICAL :: linterlock_
+      CHARACTER(256)     :: alat_units_, a_units_, b_units_, tau_units_ !,es_corr_
+      !REAL(DP)          :: celldm_(6), alat_
+      INTEGER           :: nr1_, nr2_, nr3_, ngm_, nr1x_, nr2x_, nr3x_, ngm_g_
+      INTEGER           :: i
+      REAL(DP)          :: alat_
+      REAL(DP)          :: a1_(3), a2_(3), a3_(3)
+      REAL(DP)          :: b1_(3), b2_(3), b3_(3)
+      REAL(DP), ALLOCATABLE :: tau_(:,:)
+      INTEGER           :: fde_max_divisor_(3), fde_frag_split_type_(3)
+      INTEGER           :: fde_cell_offset_(3)
+      REAL(DP)          :: frag_cell_split_(3)
+      !
+
+      ierr=0
+      !
+      !
+      CALL iotk_scan_begin( iunit, "INTERLOCKING_CELLS" )
+      !
+      CALL iotk_scan_dat( iunit, "LINTERLOCK", linterlock_, IERR=ierr )
+      IF ( ierr/=0 ) RETURN
+      !
+      !CALL iotk_scan_dat( iunit, "BRAVAIS_LATTICE", bravais_lattice_, IERR=ierr )
+      !IF ( ierr /= 0 ) RETURN
+      !
+      !
+      !CALL iotk_scan_dat( iunit, "NON-PERIODIC_CELL_CORRECTION", es_corr_, IERR=ierr)
+      !IF ( ierr /= 0 ) RETURN
+      !
+      !
+      CALL iotk_scan_empty( iunit, "LARGE_FFT_GRID", ATTR = attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      CALL iotk_scan_attr( attr, "nr1l", nr1_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "nr2l", nr2_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "nr3l", nr3_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "nr1xl", nr1x_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "nr2xl", nr2x_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "nr3xl", nr3x_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "GVECL_NUMBER", ngm_g_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "VECL_NUMBER", ngm_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      CALL iotk_scan_dat( iunit, "LATTICE_PARAMETER", alat_, ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      !
+      CALL iotk_scan_attr( attr, "UNITS", alat_units_, IERR=ierr )
+      IF ( ierr /= 0 ) RETURN
+      !
+      !
+      !CALL iotk_scan_dat( iunit, "CELL_DIMENSIONS", celldm_, IERR=ierr )
+      !IF (ierr/=0) RETURN
+      !
+      !
+      CALL iotk_scan_begin( iunit, "LARGE_DIRECT_LATTICE_VECTORS", IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      !
+      CALL iotk_scan_empty( iunit, "UNITS_FOR_LARGE_DIRECT_LATTICE_VECTORS", &
+                            ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "UNITS", a_units_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "a1l", a1_(:), ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "a2l", a2_(:), IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "a3l", a3_(:), IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_end(   iunit, "LARGE_DIRECT_LATTICE_VECTORS", IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      CALL iotk_scan_begin( iunit, "LARGE_RECIPROCAL_LATTICE_VECTORS", IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_empty( iunit, "UNITS_FOR_LARGE_RECIPROCAL_LATTICE_VECTORS", &
+                            ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "UNITS", b_units_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "b1l", b1_(:), ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "b2l", b2_(:), IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "b3l", b3_(:), IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_end(   iunit, "LARGE_RECIPROCAL_LATTICE_VECTORS", IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      !
+      CALL iotk_scan_empty( iunit, "UNITS_FOR_LARGE_ATOMIC_POSITIONS", ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_attr( attr, "UNITS", tau_units_, IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      ALLOCATE( tau_(3,nat) )
+      !
+      DO i = 1, nat
+         !
+         CALL iotk_scan_empty( iunit, &
+                               "ATOM" // trim( iotk_index(i) ), ATTR=attr, IERR=ierr )
+         IF (ierr/=0) RETURN
+         !
+         !CALL iotk_scan_attr( attr, "INDEX",  ityp_(i), IERR=ierr )
+         !IF (ierr/=0) RETURN
+         CALL iotk_scan_attr( attr, "tau_large",    tau_(:,i), IERR=ierr )
+         IF (ierr/=0) RETURN
+         !CALL iotk_scan_attr( attr, "if_pos", if_pos_(:,i), IERR=ierr )
+         !IF (ierr/=0) RETURN
+         !
+      ENDDO
+      !
+      CALL iotk_scan_dat(   iunit, "fde_cell_offset", fde_cell_offset_(1:3), ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "frag_cell_split", frag_cell_split_(1:3), ATTR=attr, IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "fde_max_divisor", fde_max_divisor_(1:3), IERR=ierr )
+      IF (ierr/=0) RETURN
+      CALL iotk_scan_dat(   iunit, "fde_frag_split_type", fde_frag_split_type_(:), IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      !
+      CALL iotk_scan_end( iunit, "INTERLOCKING_CELLS", IERR=ierr )
+      IF (ierr/=0) RETURN
+      !
+      !
+      !IF ( present(bravais_lattice) )  bravais_lattice = bravais_lattice_
+      !IF ( present(celldm) )        celldm       = celldm_
+      IF ( present(linterlock) )    linterlock   = linterlock_
+      IF ( present( nr1l ) )        nr1l         = nr1_
+      IF ( present( nr2l ) )        nr2l         = nr2_
+      IF ( present( nr3l ) )        nr3l         = nr3_
+      IF ( present( nr1xl ) )        nr1xl         = nr1x_
+      IF ( present( nr2xl ) )        nr2xl         = nr2x_
+      IF ( present( nr3xl ) )        nr3xl         = nr3x_
+      IF ( present( ngml_g ) )        ngml_g         = ngm_g_
+      IF ( present( ngml ) )        ngml         = ngm_
+      IF ( present(alat) )          alat         = alat_
+      IF ( present(a1) )            a1           = a1_
+      IF ( present(a2) )            a2           = a2_
+      IF ( present(a3) )            a3           = a3_
+      IF ( present(b1) )            b1           = b1_
+      IF ( present(b2) )            b2           = b2_
+      IF ( present(b3) )            b3           = b3_
+      IF ( present(alat_units) )    alat_units   = trim(alat_units_)
+      IF ( present(a_units) )       a_units      = trim(a_units_)
+      IF ( present(b_units) )       b_units      = trim(b_units_)
+      IF ( present(tau) )           tau          = tau_
+      IF ( present(fde_cell_offset) )  fde_cell_offset = fde_cell_offset_
+      IF ( present(frag_cell_split) )  frag_cell_split = frag_cell_split_
+      IF ( present(fde_max_divisor) ) fde_max_divisor = fde_max_divisor_
+      IF ( present(fde_frag_split_type) ) fde_frag_split_type = fde_frag_split_type_
+      !IF ( present(es_corr) )       es_corr      = trim(es_corr_)
+      !
+    END SUBROUTINE qexml_read_interlock
     !
 #endif
     !

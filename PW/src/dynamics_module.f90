@@ -24,6 +24,7 @@ MODULE dynamics_module
    USE kinds,     ONLY : DP
    USE ions_base, ONLY : amass
    USE io_global, ONLY : stdout
+   USE io_global, ONLY : ionode, ionode_id
    USE io_files,  ONLY : prefix, tmp_dir, seqopn
    USE constants, ONLY : tpi, fpi
    USE constants, ONLY : amu_ry, ry_to_kelvin, au_ps, bohr_radius_cm, ry_kbar
@@ -45,7 +46,8 @@ MODULE dynamics_module
          dt,          &! time step
          temperature, &! starting temperature
          virial,      &! virial (used for the pressure)
-         delta_t       ! parameter used in thermalization
+         delta_t      &! parameter used in thermalization
+         kinetic_en   ! save the kinetic energy
    INTEGER :: &
          nraise,      &! parameter used in thermalization
          ndof,        &! the number of degrees of freedom
@@ -135,6 +137,10 @@ CONTAINS
       USE ener,           ONLY : etot
       USE force_mod,      ONLY : force, lstres
       USE control_flags,  ONLY : istep, lconstrain, tv0rd
+      USE fde,            ONLY : do_fde, nat_fde, etot_fde, if_pos_fde
+      use fde_routines
+      USE mp,             ONLY : mp_sum
+      USE mp_images,      ONLY : inter_fragment_comm
       !
       USE constraints_module, ONLY : nconstr, check_constraint
       USE constraints_module, ONLY : remove_constr_force, remove_constr_vec
@@ -165,6 +171,18 @@ CONTAINS
          ndof = 3*nat - 3 - nconstr
          !
       ENDIF
+      !
+      if (do_fde) then
+            IF ( ANY( if_pos_fde(:,:) == 0 ) ) THEN
+               !
+               ndof = 3*nat_fde - count( if_pos_fde(:,:) == 0 ) - nconstr ! Constrained opt/md is not extended to fde yet
+               !
+            ELSE
+               !
+               ndof = 3*nat_fde - 3 - nconstr ! Constrained opt/md is not extended to fde yet
+               !
+            ENDIF
+      endif
       !
       vel_defined  = .true.
       temp_av      = 0.D0
@@ -258,6 +276,10 @@ CONTAINS
             delta(:) = delta(:) + mass(na)*( tau_new(:,na) - tau(:,na) )
          ENDDO
          delta(:) = delta(:) / total_mass
+         if (do_fde) then
+            if (ionode) call mp_sum(delta, inter_fragment_comm)
+!            call mp_bcast(delta, ionode_id, intra_image_comm)
+         end if        
          FORALL( na = 1:nat ) tau_new(:,na) = tau_new(:,na) - delta(:)
          !
          IF (vel_defined) THEN
@@ -266,6 +288,10 @@ CONTAINS
                delta(:) = delta(:) + mass(na)*( tau_old(:,na) - tau(:,na) )
             ENDDO
             delta(:) = delta(:) / total_mass
+            if (do_fde) then
+                  if (ionode) call mp_sum(delta, inter_fragment_comm)
+   !               call mp_bcast(delta, ionode_id, intra_image_comm)
+            end if
             FORALL( na = 1:nat ) tau_old(:,na) = tau_old(:,na) - delta(:)
          ENDIF
          !
@@ -321,9 +347,18 @@ CONTAINS
          ENDDO
          !
       ENDDO
+      if (do_fde) then
+            if (ionode) then
+               call mp_sum(ml, inter_fragment_comm)
+               call mp_sum(ekin, inter_fragment_comm)
+               call mp_sum(kstress, inter_fragment_comm)
+            endif
+      endif
       !
       ekin = ekin*alat**2
       kstress = kstress * alat**2 / omega
+      !
+      kinetic_en = ekin
       !
       ! ... find the new temperature and update the average
       !
@@ -371,10 +406,17 @@ CONTAINS
       !
       ! ... infos are written on the standard output
       !
-      WRITE( stdout, '(5X,"kinetic energy (Ekin) = ",F14.8," Ry",/,  &
-                     & 5X,"temperature           = ",F14.8," K ",/,  &
-                     & 5X,"Ekin + Etot (const)   = ",F14.8," Ry")' ) &
-          ekin, temp_new, ( ekin  + etot )
+      if (do_fde) then
+            WRITE( stdout, '(5X,"kinetic energy (Ekin) = ",F14.8," Ry",/,  &
+                           & 5X,"temperature           = ",F14.8," K ",/,  &
+                           & 5X,"Ekin + Etot (const)   = ",F14.8," Ry")' ) &
+                  ekin, temp_new, ( ekin  + etot_fde )
+      else
+            WRITE( stdout, '(5X,"kinetic energy (Ekin) = ",F14.8," Ry",/,  &
+                           & 5X,"temperature           = ",F14.8," K ",/,  &
+                           & 5X,"Ekin + Etot (const)   = ",F14.8," Ry")' ) &
+                ekin, temp_new, ( ekin  + etot )
+      endif
       IF (lstres) WRITE ( stdout, &
       '(5X,"Ions kinetic stress = ",F10.2," (kbar)",/3(27X,3F10.2/)/)') &
               ((kstress(1,1)+kstress(2,2)+kstress(3,3))/3.d0*ry_kbar), &
@@ -479,6 +521,10 @@ CONTAINS
             total_mass = total_mass + mass(na)
             !
          ENDDO
+         if (do_fde) then
+            if (ionode) call mp_sum(total_mass, inter_fragment_comm)
+!            call mp_bcast(total_mass, ionode_id, intra_image_comm)
+         endif
          !
          IF ( tv0rd ) THEN ! initial velocities available from input file
             !
@@ -692,10 +738,20 @@ CONTAINS
             !
             IF ( .not. any( if_pos(:,:) == 0 ) ) THEN
                !
-               total_mass = sum ( mass(1:nat) )
+               total_mass = 0.d0
                DO na = 1, nat
+                  !
+                  total_mass = total_mass + mass(na)  ! keep for FDE
+                  !
                   ml(:) = ml(:) + mass(na)*vel(:,na)
                ENDDO
+               !
+               if (do_fde) then
+                  if (ionode) then
+                        call mp_sum(total_mass, inter_fragment_comm)
+                        call mp_sum(ml, inter_fragment_comm)
+                  endif
+               endif
                ml(:) = ml(:) / total_mass
                !
             ENDIF
@@ -712,6 +768,9 @@ CONTAINS
                      ( ( vel(1,na) )**2 + ( vel(2,na) )**2 + ( vel(3,na) )**2 )
             !
          ENDDO
+         if (do_fde) then
+            if (ionode) call mp_sum(ek, inter_fragment_comm)
+         endif
          !
          ! ... after the velocity of the center of mass has been subtracted the
          ! ... temperature is usually changed. Set again the temperature to the
@@ -1198,6 +1257,10 @@ CONTAINS
       USE control_flags, ONLY : nstep
       USE cell_base,     ONLY : omega, at, alat
       USE ions_base,     ONLY : nat, fixatom
+      use mp,            only : mp_sum
+      use mp_images,     only : inter_fragment_comm
+      !
+      use fde,           only : do_fde, nat_fde, fixatom_fde, diff_coeff_fde
       !
       IMPLICIT NONE
       !
@@ -1220,6 +1283,13 @@ CONTAINS
       !
       WRITE( UNIT = stdout, FMT = '(/,5X,"< D > = ",F16.8," cm^2/s")' ) &
           sum( diff_coeff(:) ) / dble( nat-fixatom )
+      if ( do_fde ) then
+            diff_coeff_fde = sum( diff_coeff(:) )
+            if ( ionode ) call mp_sum( diff_coeff_fde , inter_fragment_comm )
+            diff_coeff_fde = diff_coeff_fde / dble( nat_fde - fixatom_fde )
+            WRITE( UNIT = stdout, FMT = '(/,5X,"< D > FDE = ",F16.8," cm^2/s")' ) &
+            diff_coeff_fde
+      endif
       !
       ! ... radial distribution function g(r)
       !
@@ -1555,22 +1625,64 @@ CONTAINS
 
      WRITE (stdout, '(5x,"The current acceptance is :",3x,F10.6)') dble(num_accept)/istep
 
+      call trajectory
      ! Print the trajectory
-#if defined(__MPI)
-     IF(ionode) THEN
-#endif
-     OPEN(117,file="trajectory-"//trim(prefix)//".xyz",status="unknown",position='APPEND')
-     WRITE(117,'(I5)') nat
-     WRITE(117,'("# Step: ",I5,5x,"Total energy: ",F17.8,5x,"Ry")') istep-1, etot
-     DO ia = 1, nat
-       WRITE( 117, '(A3,3X,3F14.9)') atm(ityp(ia)),tau(:,ia)*alat*bohr_radius_angs
-     ENDDO
-     CLOSE(117)
-#if defined(__MPI)
-     ENDIF
-#endif
-
      RETURN
    END SUBROUTINE smart_MC
 
+   !-----------------------------------------------------------------------
+   subroutine trajectory()
+   !-----------------------------------------------------------------------
+      use io_global,      only : ionode
+      use io_files,      only : prefix
+      USE ions_base,      ONLY : nat, ityp, tau, atm
+      USE control_flags,  ONLY : istep
+      USE ener,           ONLY : etot
+      USE cell_base,      ONLY : alat
+      USE constants, ONLY : bohr_radius_angs
+      USE fde
+      USE fde_routines
+      integer :: ia
+      real(dp), allocatable :: vel_fde(:,:)
+   
+#ifdef __MPI
+      if(ionode) then
+#endif
+      if (do_fde) then
+          allocate( vel_fde(3,nat_fde) )
+          if (allocated(vel)) then
+            call gather_coordinates_nobcast( vel, vel_fde )
+          else
+            vel_fde = 0.d0
+          endif
+     ! needs to be changed, just comment it out: the gathering is done in
+     ! move_ions and needs to be copy/pasted into (if ehrenfest).
+     !     call gather_coordinates(tau, tau_fde)
+          if (currfrag==1 ) then
+            OPEN(117,file="trajectory-"//trim(prefix)//".xyz",status="unknown",position='APPEND')
+            write(117,'(I5)') nat_fde
+            write(117,'("# Step: ",I5,3x,"Energy: ",F17.8,3x,"Kin. Energy: ",F17.8,3x,"Total Energy: ",F17.8,3x,"(Ry)")')&
+            istep-1, etot_fde, kinetic_en, etot_fde + kinetic_en
+            do ia = 1, nat_fde
+              WRITE( 117, '(A3,3X,6F14.9)') atm(ityp_fde(ia)),tau_fde(:,ia)*alat*bohr_radius_angs, vel_fde(:,ia)
+            enddo
+            close(117)
+          endif
+          deallocate( vel_fde )
+      else
+        OPEN(117,file="trajectory-"//trim(prefix)//".xyz",status="unknown",position='APPEND')
+        write(117,'(I5)') nat
+        write(117,'("# Step: ",I5,5x,"Total energy: ",F17.8,5x,"Ry")') istep-1, etot
+        do ia = 1, nat
+            WRITE( 117, '(A3,3X,6F14.9)') atm(ityp(ia)),tau(:,ia)*alat*bohr_radius_angs,vel(:,ia)
+   !          WRITE( 117, '(A3,3X,3F14.9)') atm(ityp(ia)),tau(:,ia)*alat*bohr_radius_angs
+        enddo
+        close(117)
+      endif
+#ifdef __MPI
+      endif
+#endif  
+      return
+      end subroutine trajectory
+   
 END MODULE dynamics_module

@@ -167,17 +167,8 @@ CONTAINS
     WRITE( stdout, '(/5X,"Program ",A," starts on ",A9," at ",A9)' ) &
          TRIM(code_version), cdate, ctime
     !
-    WRITE( stdout, '(/5X,"This program is part of the open-source Quantum ",&
-         &    "ESPRESSO suite", &
-         &/5X,"for quantum simulation of materials; please cite",   &
-         &/9X,"""P. Giannozzi et al., J. Phys.:Condens. Matter 21 ",&
-         &    "395502 (2009);", &
-         &/9X,"""P. Giannozzi et al., J. Phys.:Condens. Matter 29 ",&
-         &    "465901 (2017);", &
-         &/9X," URL http://www.quantum-espresso.org"", ", &
-         &/5X,"in publications or presentations arising from this work. More details at",&
-         &/5x,"http://www.quantum-espresso.org/quote")' )
-
+    WRITE( stdout, '(/5X,"This program is based on the open-source Quantum ",&
+        &    "ESPRESSO suite")' )
     RETURN
   END SUBROUTINE opening_message
 

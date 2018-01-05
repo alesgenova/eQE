@@ -17,6 +17,7 @@ SUBROUTINE init_run()
        gstart ! to be comunicated to the Solvers if gamma_only
   USE gvecs,              ONLY : gcutms, ngms
   USE cell_base,          ONLY : at, bg, set_h_ainv
+  USE large_cell_base,    ONLY : atl => at, bgl => bg !, set_h_ainv
   USE cellmd,             ONLY : lmovecell
   USE dynamics_module,    ONLY : allocate_dyn_vars
   USE paw_variables,      ONLY : okpaw
@@ -26,12 +27,15 @@ SUBROUTINE init_run()
 #endif
   USE bp,                 ONLY : allocate_bp_efield, bp_global_map
   USE fft_base,           ONLY : dfftp, dffts
+  USE fft_base,           ONLY : dfftl
   USE funct,              ONLY : dft_is_hybrid
   USE recvec_subs,        ONLY : ggen, ggens
+  USE recvecl_subs,       ONLY : ggen_large
   USE wannier_new,        ONLY : use_wannier    
   USE dfunct,             ONLY : newd
   USE esm,                ONLY : do_comp_esm, esm_init
   USE mp_bands,           ONLY : intra_bgrp_comm, inter_bgrp_comm, nbgrp, root_bgrp_id
+  USE mp_large,           ONLY : intra_lgrp_comm
   USE mp,                 ONLY : mp_bcast
   USE tsvdw_module,       ONLY : tsvdw_initialize
   USE Coul_cut_2D,        ONLY : do_cutoff_2D, cutoff_fact 
@@ -39,6 +43,9 @@ SUBROUTINE init_run()
 #if defined(__HDF5) && defined(__OLDXML)
   USE hdf5_qe, ONLY : initialize_hdf5
 #endif
+  USE fde,                ONLY : do_fde, linterlock, &
+                                  fde_cell_offset,fde_cell_shift,frag_cell_split
+  use fde_routines
   !
   IMPLICIT NONE
   !
@@ -61,13 +68,17 @@ SUBROUTINE init_run()
   ! ... allocate memory for G- and R-space fft arrays
   !
   CALL allocate_fft()
+  if ( do_fde ) call allocate_fft_large()
   !
   ! ... generate reciprocal-lattice vectors and fft indices
   !
   IF( smallmem ) THEN
      CALL ggen( dfftp, gamma_only, at, bg, no_global_sort = .TRUE. )
+     if ( do_fde .and. linterlock ) &
+       call ggen_large( dfftl, gamma_only, atl, bgl, no_global_sort = .true. )
   ELSE
      CALL ggen( dfftp, gamma_only, at, bg )
+     if ( do_fde .and. linterlock ) call ggen_large( dfftl, gamma_only, atl, bgl )
   END IF
   CALL ggens( dffts, gamma_only, at, g, gg, mill, gcutms, ngms )
   if (gamma_only) THEN
@@ -82,10 +93,26 @@ SUBROUTINE init_run()
   IF (do_cutoff_2D) CALL cutoff_fact()
   !
   CALL gshells ( lmovecell )
+  if ( do_fde ) call gshells_large( lmovecell )
   !
   ! ... variable initialization for parallel symmetrization
   !
   CALL sym_rho_init (gamma_only )
+  !
+  ! FDE allocation
+  !
+  if (do_fde) then
+    call allocate_fde
+    !
+    ! Generate the fde datatypes defining the subsystems in the cells
+    !
+    call gen_simulation_cells()
+    !
+    ! Center the atoms in the small cell, and calculate the offset between the native cell 
+    ! and the fragment cell
+    !
+    call get_local_offset(fde_cell_offset,fde_cell_shift,frag_cell_split)
+  endif
   !
   ! ... allocate memory for all other arrays (potentials, wavefunctions etc)
   !
@@ -95,6 +122,7 @@ SUBROUTINE init_run()
     CALL paw_init_onecenter()
   ENDIF
   CALL allocate_locpot()
+  if (do_fde) call allocate_locpot_large()
   CALL allocate_wfc()
   CALL allocate_bp_efield()
   CALL bp_global_map()
