@@ -381,12 +381,17 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
   USE constants,            ONLY : eps32
   USE io_global,            ONLY : stdout
   USE cell_base,            ONLY : omega, bg
+  USE large_cell_base,      ONLY : bgl => bg
   USE ions_base,            ONLY : nat, tau, nsp, ityp
   USE fft_base,             ONLY : dfftp, dffts
+  USE fft_base,             ONLY : dfftl
   USE fft_interfaces,       ONLY : fwfft, invfft
   USE gvect,                ONLY : ngm, g, gg, gstart, eigts1, eigts2, eigts3
+  USE gvecl,                ONLY : ngml => ngm, gl => g, &
+                                   eigts1l => eigts1, eigts2l => eigts2, eigts3l => eigts3
   USE lsda_mod,             ONLY : lsda, nspin
   USE scf,                  ONLY : rho, rho_core, rhog_core, v
+  use scf_large,            only : vltot_large => vltot
   USE ldaU,                 ONLY : eth
   USE wavefunctions_module, ONLY : psic
   USE ener,                 ONLY : ehart, etxc, vtxc, epaw
@@ -399,6 +404,11 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
   USE paw_variables,        ONLY : okpaw, ddd_paw
   USE paw_onecenter,        ONLY : PAW_potential
   !
+  USE fde,                  ONLY : do_fde, fde_init_rho, strf_fde, strf_fde_large, &
+                                   fde_cell_shift, fde_cell_offset, tau_fde, nat_fde, &
+                                   linterlock, ityp_fde, f2l
+  use fde_routines
+  !
   IMPLICIT NONE
   !
   INTEGER, INTENT(IN) :: rho_extr
@@ -410,6 +420,7 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
   REAL(DP) :: charge
   !
   INTEGER :: is
+  integer :: nt
   !
   IF ( rho_extr < 1 ) THEN
      !
@@ -419,6 +430,21 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
      !
      CALL struc_fact( nat, tau, nsp, ityp, ngm, g, bg, &
                       dfftp%nr1, dfftp%nr2, dfftp%nr3, strf, eigts1, eigts2, eigts3 )
+     !
+     if (do_fde ) then
+      strf_fde(:,:) = strf(:,:)
+     !
+      if (linterlock) then
+        CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
+                       dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
+        call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
+        call setlocal_fde_large(vltot_large, strf_fde_large)
+      else
+        do nt = 1, nsp
+          call c_grid_gather_sum_scatter( strf_fde(:,nt) )
+        end do
+      endif
+     endif 
      !
      ! ... new charge density from extrapolated wfcs
      !
@@ -548,6 +574,18 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
      CALL struc_fact( nat, tau, nsp, ityp, ngm, g, bg, &
                       dfftp%nr1, dfftp%nr2, dfftp%nr3, strf, eigts1, eigts2, eigts3 )
      !
+     if (do_fde ) then
+      strf_fde(:,:) = strf(:,:)
+      !
+      CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
+                dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
+      call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
+      call setlocal_fde_large(vltot_large, strf_fde_large)
+      do nt = 1, nsp
+        call c_grid_gather_sum_scatter( strf_fde(:,nt) )
+      end do
+     endif
+     !
      CALL set_rhoc()
      !
      ! ... add atomic charges in the new positions
@@ -593,6 +631,8 @@ SUBROUTINE extrapolate_charge( dirname, rho_extr )
      rho%of_g(:,is) = psic(dfftp%nl(:))
      !
   END DO
+  !
+  if (do_fde .and. .not. fde_init_rho) call update_rho_fde(rho, .true.)
   !
   CALL v_of_rho( rho, rho_core, rhog_core, &
                  ehart, etxc, vtxc, eth, etotefield, charge, v )

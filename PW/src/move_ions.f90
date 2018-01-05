@@ -27,9 +27,11 @@ SUBROUTINE move_ions ( idone )
   USE kinds,                  ONLY : DP
   USE cell_base,              ONLY : alat, at, bg, omega, cell_force, &
                                      fix_volume, fix_area
+  USE large_cell_base,        ONLY : alatl => alat, atl => at, bgl => bg, omegal => omega
   USE cellmd,                 ONLY : omega_old, at_old, press, lmovecell, calc
   USE ions_base,              ONLY : nat, ityp, zv, tau, if_pos
   USE fft_base,               ONLY : dfftp
+  USE fft_base,               ONLY : dfftl
   USE fft_base,               ONLY : dffts
   USE fft_types,              ONLY : fft_type_allocate
   USE gvect,                  ONLY : gcutm
@@ -56,6 +58,8 @@ SUBROUTINE move_ions ( idone )
                                      fcp_relax, fcp_relax_crit
   USE klist,                  ONLY : nelec
   USE dfunct,                 only : newd
+  USE fde
+  use fde_routines
   !
   IMPLICIT NONE
   !

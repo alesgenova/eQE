@@ -17,6 +17,7 @@ subroutine force_ew (alat, nat, ntyp, ityp, zv, at, bg, tau, &
   USE kinds
   USE constants, ONLY : tpi, e2
   USE mp_bands,  ONLY : intra_bgrp_comm
+  USE mp_large,  ONLY : intra_lgrp_comm
   USE mp,        ONLY : mp_sum
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_force_ew 
   implicit none
@@ -165,7 +166,7 @@ subroutine force_ew (alat, nat, ntyp, ityp, zv, at, bg, tau, &
   enddo
 100 continue
   !
-  CALL mp_sum( forceion, intra_bgrp_comm )
+  CALL mp_sum( forceion, intra_lgrp_comm )
   !
   return
 end subroutine force_ew

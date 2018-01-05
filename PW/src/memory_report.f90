@@ -33,7 +33,9 @@ SUBROUTINE memory_report()
   USE cell_base, ONLY : omega, bg, alat
   USE exx,       ONLY : ecutfock, nkqs, use_ace
   USE fft_base,  ONLY : dffts, dfftp
+  USE fft_base,  ONLY : dfftl
   USE gvect,     ONLY : ngm, ngl, ngm_g, g, gcutm
+  USE gvecl,     ONLY : ngll => ngl, ngml => ngm
   USE gvecs,     ONLY : ngms, doublegrid
   USE gvecw,     ONLY : ecutwfc, gcutw
   USE klist,     ONLY : nks, nkstot, xk, qnorm
@@ -55,7 +57,8 @@ SUBROUTINE memory_report()
   USE mp_diag,   ONLY : np_ortho
   USE mp_bands,  ONLY : nproc_bgrp, nbgrp
   USE mp_pools,  ONLY : npool
-  USE mp_images, ONLY : nproc_image  
+  USE mp_images, ONLY : nproc_image
+  use fde,       only : do_fde
   !
   IMPLICIT NONE
   !
