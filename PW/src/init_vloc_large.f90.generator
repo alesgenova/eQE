@@ -1,0 +1,29 @@
+!
+! Copyright (C) 2001-2007 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!
+!----------------------------------------------------------------------
+subroutine init_vloc_large()
+  !----------------------------------------------------------------------
+  !
+  !    This routine computes the fourier coefficient of the local
+  !    potential vloc(ig,it) for each type of atom
+  !
+  USE atom,       ONLY : msh, rgrid
+  USE m_gth,      ONLY : vloc_gth
+  USE kinds,      ONLY : dp
+  USE uspp_param, ONLY : upf
+  USE ions_base,  ONLY : ntyp => nsp
+  USE large_cell_base,  ONLY : omega, tpiba2
+  USE vlocal_large,     ONLY : vloc => vloc_large
+  USE gvecl,      ONLY : ngl, gl
+  USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_lr_Vloc
+  !
+  implicit none
+  !hack2018 ["init_vloc", "PW/src/init_vloc.f90"]
+end subroutine init_vloc_large
+
