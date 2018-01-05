@@ -31,12 +31,17 @@ SUBROUTINE forces()
   USE kinds,         ONLY : DP
   USE io_global,     ONLY : stdout
   USE cell_base,     ONLY : at, bg, alat, omega  
+  USE large_cell_base,     ONLY : atl => at, bgl => bg, alatl => alat, omegal => omega
   USE ions_base,     ONLY : nat, ntyp => nsp, ityp, tau, zv, amass, extfor, atm
   USE fft_base,      ONLY : dfftp
+  USE fft_base,      ONLY : dfftl
   USE gvect,         ONLY : ngm, gstart, ngl, igtongl, g, gg, gcutm
+  USE gvecl,         ONLY : ngml => ngm, gstartl => gstart, ngll => ngl, nll => nl, &
+                            igtongll => igtongl, gl => g, ggl => gg, gcutml => gcutm
   USE lsda_mod,      ONLY : nspin
   USE symme,         ONLY : symvector
   USE vlocal,        ONLY : strf, vloc
+  USE vlocal_large,  ONLY : vloc_large
   USE force_mod,     ONLY : force, lforce, sumfor
   USE scf,           ONLY : rho
   USE ions_base,     ONLY : if_pos
@@ -55,6 +60,9 @@ SUBROUTINE forces()
 
   USE xdm_module,    ONLY : force_xdm
   USE tsvdw_module,  ONLY : FtsvdW
+  USE fde,           ONLY : do_fde, nat_fde, ityp_fde, tau_fde, strf_fde, rho_fde, fde_nspin,&
+                            strf_fde_large, rho_fde_large, linterlock, tau_large
+  use fde_routines
   USE esm,           ONLY : do_comp_esm, esm_bc, esm_force_ew
   USE qmmm,          ONLY : qmmm_mode
   !
@@ -64,6 +72,9 @@ SUBROUTINE forces()
                            forcelc(:,:), &
                            forcecc(:,:), &
                            forceion(:,:), &
+                           forcelc_fde(:,:), &
+                           forceion_fde(:,:), &
+                           force_fde(:,:), &
                            force_disp(:,:),&
                            force_d3(:,:),&
                            force_disp_xdm(:,:),&
@@ -93,6 +104,8 @@ SUBROUTINE forces()
   !
   ALLOCATE( forcenl( 3, nat ), forcelc( 3, nat ), forcecc( 3, nat ), &
             forceh( 3, nat ), forceion( 3, nat ), forcescc( 3, nat ) )
+  if (do_fde) allocate (forcelc_fde(3,nat_fde), forceion_fde(3,nat_fde), force_fde(3,nat_fde) )!, &
+                        !forcegcc( 3, nat ))
   !    
   forcescc(:,:) = 0.D0
   forceh(:,:)   = 0.D0
@@ -104,9 +117,22 @@ SUBROUTINE forces()
   !
   ! ... The local contribution
   !
-  CALL force_lc( nat, tau, ityp, alat, omega, ngm, ngl, igtongl, &
-                 g, rho%of_r, dfftp%nl, nspin, gstart, gamma_only, vloc, &
-                 forcelc )
+  if (do_fde) then
+     if (linterlock) then
+        call force_lc_large( nat_fde, tau_fde, ityp_fde, alatl, omegal, ngml, ngll, igtongll, &
+                    gl, rho_fde_large%of_r, nll, fde_nspin, gstartl, gamma_only, vloc_large, &
+                    forcelc_fde )
+        call scatter_coordinates(forcelc_fde, forcelc)
+     else
+        call force_lc( nat, tau, ityp, alat, omega, ngm, ngl, igtongl, &
+                    g, rho_fde%of_r, nl, fde_nspin, gstart, gamma_only, vloc, &
+                    forcelc )
+     endif
+  else
+     CALL force_lc( nat, tau, ityp, alat, omega, ngm, ngl, igtongl, &
+                    g, rho%of_r, nl, nspin, gstart, gamma_only, vloc, &
+                    forcelc )
+  endif
   !
   ! ... The NLCC contribution
   !
@@ -121,9 +147,19 @@ SUBROUTINE forces()
   !
   IF( do_comp_esm ) THEN
      CALL esm_force_ew( forceion )
-  ELSE
+  ELSE IF (do_fde) then
+     if (linterlock) then
+        call force_ew( alatl, nat_fde, ntyp, ityp_fde, zv, atl, bgl, tau_fde, omegal, gl, &
+                 ggl, ngml, gstartl, gamma_only, gcutml, strf_fde_large, forceion_fde )
+     else
+        call force_ew( alat, nat_fde, ntyp, ityp_fde, zv, at, bg, tau_fde, omega, g, &
+                 gg, ngm, gstart, gamma_only, gcutm, strf_fde, forceion_fde )
+     endif
+     call scatter_coordinates(forceion_fde, forceion) 
+  else
      CALL force_ew( alat, nat, ntyp, ityp, zv, at, bg, tau, omega, g, &
-                    gg, ngm, gstart, gamma_only, gcutm, strf, forceion )
+                 gg, ngm, gstart, gamma_only, gcutm, strf, forceion )
+  endif
   END IF
   !
   ! ... the semi-empirical dispersion correction
@@ -166,8 +202,17 @@ SUBROUTINE forces()
   IF (do_comp_mt) THEN
     !
     ALLOCATE ( force_mt ( 3 , nat ) )
-    CALL wg_corr_force( .true.,omega, nat, ntyp, ityp, ngm, g, tau, zv, strf, &
+    !
+    if ( do_fde .and. linterlock ) then
+    !
+       CALL wg_corr_force( .true.,omegal, nat, ntyp, ityp, ngml, gl, tau_large, zv, strf_fde_large, &
+                        nspin, rho_fde_large%of_g, force_mt )
+    else
+    !
+       CALL wg_corr_force( .true.,omega, nat, ntyp, ityp, ngm, g, tau, zv, strf, &
                         nspin, rho%of_g, force_mt )
+    !
+    endif
   END IF
   !
   ! ... call void routine for user define/ plugin patches on internal forces
@@ -220,7 +265,7 @@ SUBROUTINE forces()
         IF ( gate ) force(ipol,na) = force(ipol,na) + forcegate(ipol,na) ! TB
         IF (lelfield)  force(ipol,na) = force(ipol,na) + forces_bp_efield(ipol,na)
         IF (do_comp_mt)force(ipol,na) = force(ipol,na) + force_mt(ipol,na) 
-
+        !if (do_fde)    force(ipol,na) = force(ipol,na) + forcegcc(ipol,na)
         sumfor = sumfor + force(ipol,na)
         !
      END DO
@@ -228,6 +273,13 @@ SUBROUTINE forces()
      !TB
      IF ((gate.and.relaxz).AND.(ipol==3)) WRITE( stdout, '("Total force in z direction = 0 disabled")')
      !
+     if (.not. do_fde) then
+        DO na = 1, nat
+           !
+           force(ipol,na) = force(ipol,na) - sumfor / DBLE( nat )
+           !
+        END DO
+     endif
      IF ( (do_comp_esm .and. ( esm_bc .ne. 'pbc' )).or.(gate.and.relaxz) ) THEN
         !
         ! ... impose total force along xy = 0
