@@ -1,0 +1,34 @@
+!
+! Copyright (C) 2001-2010 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!
+!-----------------------------------------------------------------------
+SUBROUTINE allocate_fft_large
+  !-----------------------------------------------------------------------
+  !
+  !     This routine allocates memory for FFT-related arrays - IMPORTANT:
+  !     routine "data_structure" must be called before it in order to
+  !     set the proper dimensions and grid distribution across processors
+  !     these dimensions
+  !
+  USE io_global, ONLY : stdout
+  USE gvecl,     ONLY : ngm, g, gg, nl, nlm, mill, igtongl
+  USE gvecs,   ONLY : ngms
+  USE fft_base,   ONLY : dfftp => dfftl 
+  USE ions_base, ONLY : nat
+  USE lsda_mod,  ONLY : nspin
+  USE spin_orb,  ONLY : domag
+  USE scf_large,       ONLY : rho, v, vnew, vltot, vrs, rho_core, rhog_core, &
+                              kedtau, create_scf_type
+  USE control_flags, ONLY : gamma_only
+  USE noncollin_module, ONLY : pointlist, factlist, r_loc, &
+      report, i_cons, noncolin, npol
+  USE wavefunctions_module, ONLY : psic, psic_nc
+  USE funct,     ONLY: dft_is_meta
+  IMPLICIT NONE
+  !hack2018 ["allocate_fft", "PW/src/allocate_fft.f90"]
+END SUBROUTINE allocate_fft_large
