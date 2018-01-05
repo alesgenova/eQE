@@ -31,6 +31,7 @@ SUBROUTINE electrons()
                                    kedtau, vnew
   USE control_flags,        ONLY : tr2, niter, conv_elec, restart, lmd, &
                                    do_makov_payne
+  USE control_flags,        ONLY : ethr
   USE io_files,             ONLY : iunmix, output_drho, &
                                    iunres, iunefield, seqopn
   USE ldaU,                 ONLY : eth
@@ -50,6 +51,12 @@ SUBROUTINE electrons()
   USE paw_symmetry,         ONLY : PAW_symmetrize_ddd
   USE ions_base,            ONLY : nat
   USE loc_scdm,             ONLY : use_scdm, localize_orbitals
+
+  USE mp,                   ONLY : mp_barrier
+  USE mp_world,             ONLY : world_comm
+  USE fde,                  ONLY : fde_fat_iter, do_fde, etot_fde,      &
+                                   fde_init_rho
+  use fde_routines
   !
   !
   IMPLICIT NONE
@@ -137,12 +144,13 @@ SUBROUTINE electrons()
   END IF
   !
   DO idum=1,niter
-     !
-     iter = iter + 1
-     !
-     ! ... Self-consistency loop. For hybrid functionals the exchange potential
-     ! ... is calculated with the orbitals at previous step (none at first step)
-     !
+    !
+    iter = iter + 1
+    !
+    ! ... Self-consistency loop. For hybrid functionals the exchange potential
+    ! ... is calculated with the orbitals at previous step (none at first step)
+    !
+    
      CALL electrons_scf ( printout, exxen )
      !
      IF ( .NOT. dft_is_hybrid() ) RETURN
@@ -339,11 +347,16 @@ SUBROUTINE electrons_scf ( printout, exxen )
   USE check_stop,           ONLY : check_stop_now, stopped_by_user
   USE io_global,            ONLY : stdout, ionode
   USE cell_base,            ONLY : at, bg, alat, omega, tpiba2
+  USE large_cell_base,      ONLY : atl => at, bgl => bg, alatl => alat, &
+                                    omegal => omega, tpiba2l => tpiba2
   USE ions_base,            ONLY : zv, nat, nsp, ityp, tau, compute_eextfor, atm
   USE basis,                ONLY : starting_pot
   USE bp,                   ONLY : lelfield
   USE fft_base,             ONLY : dfftp
+  USE fft_base,             ONLY : dfftl
   USE gvect,                ONLY : ngm, gstart, g, gg, gcutm
+  USE gvecl,                ONLY : ngml => ngm, gstartl => gstart, nll => nl, &
+                                   nlml => nlm, gl => g, ggl => gg, gcutml => gcutm
   USE gvecs,                ONLY : doublegrid, ngms
   USE klist,                ONLY : xk, wk, nelec, ngk, nks, nkstot, lgauss, &
                                    two_fermi_energies, tot_charge
@@ -379,6 +392,10 @@ SUBROUTINE electrons_scf ( printout, exxen )
   USE mp_bands,             ONLY : intra_bgrp_comm
   USE mp_pools,             ONLY : root_pool, my_pool_id, inter_pool_comm
   USE mp,                   ONLY : mp_sum, mp_bcast
+  USE mp,                   ONLY : mp_barrier
+  USE mp_bands,             ONLY : intra_bgrp_comm
+  USE mp_pools,             ONLY : inter_pool_comm, root_pool, my_pool_id
+  USE mp_world,             ONLY : world_comm
   !
   USE london_module,        ONLY : energy_london
   USE dftd3_api,            ONLY : dftd3_pbc_dispersion, &
@@ -398,6 +415,11 @@ SUBROUTINE electrons_scf ( printout, exxen )
   USE wrappers,             ONLY : memstat
   !
   USE plugin_variables,     ONLY : plugin_etot
+  !
+  USE fde
+  USE fde_routines
+  USE mp_images,            ONLY : inter_fragment_comm, intra_image_comm
+  use input_parameters,     only : pot_extrapolation, wfc_extrapolation
   !
   IMPLICIT NONE
   !
@@ -421,6 +443,7 @@ SUBROUTINE electrons_scf ( printout, exxen )
       descf,       &! correction for variational energy
       en_el=0.0_DP,&! electric field contribution to the total energy
       eext=0.0_DP   ! external forces contribution to the total energy
+  REAL(DP) :: frag_mixing_beta
   LOGICAL :: &
       first, exst
   !
@@ -457,8 +480,13 @@ SUBROUTINE electrons_scf ( printout, exxen )
   IF ( do_comp_esm ) THEN
      ewld = esm_ewald()
   ELSE
-     ewld = ewald( alat, nat, nsp, ityp, zv, at, bg, tau, &
-                omega, g, gg, ngm, gcutm, gstart, gamma_only, strf )
+    if (do_fde .and. .not. fde_init_rho) then
+      ewld = ewald( alatl, nat_fde, nsp, ityp_fde, zv, atl, bgl, tau_fde, &
+                    omegal, gl, ggl, ngml, gcutml, gstartl, gamma_only, strf_fde_large )
+    else
+      ewld = ewald( alat, nat, nsp, ityp, zv, at, bg, tau, &
+              omega, g, gg, ngm, gcutm, gstart, gamma_only, strf )
+    endif
   END IF
   !
   IF ( llondon ) THEN
@@ -513,7 +541,11 @@ SUBROUTINE electrons_scf ( printout, exxen )
      IF ( iter > 1 ) THEN
         !
         IF ( iter == 2 ) ethr = 1.D-2
-        ethr = MIN( ethr, 0.1D0*dr2 / MAX( 1.D0, nelec ) )
+          if (do_fde .and. .not. fde_init_rho) then
+            ethr = MIN( ethr, 0.1D0*dr20 / MAX( 1.D0, nelec ) )
+          else
+            ethr = MIN( ethr, 0.1D0*dr2 / MAX( 1.D0, nelec ) )
+          endif
         ! ... do not allow convergence threshold to become too small:
         ! ... iterative diagonalization may become unstable
         ethr = MAX( ethr, 1.D-13 )
@@ -531,6 +563,9 @@ SUBROUTINE electrons_scf ( printout, exxen )
      ! ... save input density to rhoin
      !
      call scf_type_COPY( rho, rhoin )
+
+     ! keep mixing_beta and use frag_mixing_beta
+     frag_mixing_beta = mixing_beta
      !
      scf_step: DO
         !
@@ -648,6 +683,8 @@ SUBROUTINE electrons_scf ( printout, exxen )
            !
            first = .FALSE.
            !
+           if ( .not. do_fde .or. fde_init_rho ) then
+           !
            IF ( dr2 < tr2_min ) THEN
               !
               WRITE( stdout, '(/,5X,"Threshold (ethr) on eigenvalues was ", &
@@ -660,15 +697,58 @@ SUBROUTINE electrons_scf ( printout, exxen )
               !
            END IF
            !
+           else
+            fde_cycle = 0
+              if (ionode) then
+                IF ( dr20 < tr2_min ) fde_cycle = 1
+                !write( stdout, * ) 'FDE_CYCLE = ',fde_cycle
+                call mp_sum( fde_cycle , inter_fragment_comm )
+              endif
+              call mp_sum( fde_cycle , intra_image_comm )
+              !
+              IF ( fde_cycle > 0 ) THEN
+                 !
+                 WRITE( stdout, '(/,5X,"Threshold (ethr) on eigenvalues was ", &
+                                  &    "too large:",/,5X,                      &
+                                  & "Diagonalizing with lowered threshold",/)' )
+                 !
+                 ethr = 0.1D0*dr20 / MAX( 1.D0, nelec )
+                 !
+                 CYCLE scf_step
+                 !
+              ENDIF
+           endif
+           !
         END IF
+        !
+        if ( do_fde .and. .not. fde_init_rho ) call mp_barrier(world_comm)
+        !
+        ! FDE: If it's a regulare FDE scf calculation, rho_fde is updated
+        !      globally at every scf cycle.
+          if ( conv_elec ) then
+            call mp_barrier(world_comm)
+            call update_rho_fde( rho, .true. )
+          else
+            call mp_barrier(world_comm)
+            call update_rho_fde( rhoin, .true. )
+          endif
+
+          if (io_level == 2) call punch('all') ! FDE restart
+        endif
         !
         IF ( .NOT. conv_elec ) THEN
            !
            ! ... no convergence yet: calculate new potential from mixed
            ! ... charge density (i.e. the new estimate)
            !
-           CALL v_of_rho( rhoin, rho_core, rhog_core, &
-                          ehart, etxc, vtxc, eth, etotefield, charge, v)
+           if (do_fde .and. .not. fde_init_rho ) then
+              CALL v_of_rho( rho, rho_core, rhog_core, &
+                  ehart, etxc, vtxc, eth, etotefield, charge, v)
+            else
+              CALL v_of_rho( rhoin, rho_core, rhog_core, &
+                  ehart, etxc, vtxc, eth, etotefield, charge, v)
+            endif
+
            IF (okpaw) THEN
               CALL PAW_potential(rhoin%bec, ddd_paw, epaw,etot_cmp_paw)
               CALL PAW_symmetrize_ddd(ddd_paw)
@@ -685,7 +765,11 @@ SUBROUTINE electrons_scf ( printout, exxen )
            !
            ! ... now copy the mixed charge density in R- and G-space in rho
            !
+           if (do_fde .and. .not. fde_init_rho) then
+            ! rho has already been set in mix_rho, because the individual fragment is at convergence
+           else
            CALL scf_type_COPY( rhoin, rho )
+           endif
            !
         ELSE 
            !
@@ -836,6 +920,10 @@ SUBROUTINE electrons_scf ( printout, exxen )
      ! ... adds possible external contribution from plugins to the energy
      !
      etot = etot + plugin_etot 
+     !
+     if (do_fde .and. .not. fde_init_rho) then
+      call fde_energies (conv_elec)
+     endif
      !
      CALL print_energies ( printout )
      !
@@ -1158,14 +1246,33 @@ SUBROUTINE electrons_scf ( printout, exxen )
        IF ( ( conv_elec .OR. MOD(iter,iprint) == 0 ) .AND. printout > 1 ) THEN
           !
           IF ( dr2 > eps8 ) THEN
+            if ( .not. do_fde ) &
              WRITE( stdout, 9081 ) etot, hwf_energy, dr2
+            if (do_fde .and. .not. fde_init_rho) then 
+              write(stdout, 9086) dr2max
+              write(stdout, 9084) dr20
+            endif
           ELSE
+            if ( .not. do_fde ) &
              WRITE( stdout, 9083 ) etot, hwf_energy, dr2
+            if (do_fde .and. .not. fde_init_rho) then 
+              write(stdout, 9088) dr2max
+              write(stdout, 9087) dr20
+            endif
           END IF
           IF ( only_paw ) WRITE( stdout, 9085 ) etot+total_core_energy
           !
           WRITE( stdout, 9060 ) &
                ( eband + deband ), ehart, ( etxc - etxcc ), ewld
+          !
+          if (do_fde .and. .not. fde_init_rho) then
+            write(stdout,*)
+            write(stdout,'(5X,''FDE: sum of frag energies ='',F17.8,'' Ry'')') etot_sum
+            write(stdout,'(5X,''FDE: ewald double counting='',F17.8,'' Ry'')') edc_fde
+            write(stdout,'(5X,''FDE: non additive kinetic ='',F17.8,'' Ry'')') ekin_nadd
+            write(stdout,'(5X,''FDE: non additive E_XC    ='',F17.8,'' Ry'')') etxc_nadd
+            write(stdout,'(5X,''FDE: total energy         ='',F17.8,'' Ry'')') etot_fde
+          endif
           !
           IF ( llondon ) WRITE ( stdout , 9074 ) elondon
           IF ( ldftd3 )  WRITE ( stdout , 9078 ) edftd3
@@ -1204,16 +1311,46 @@ SUBROUTINE electrons_scf ( printout, exxen )
           !
           IF ( dr2 > eps8 ) THEN
              WRITE( stdout, 9081 ) etot, hwf_energy, dr2
+             if (do_fde .and. .not. fde_init_rho) then 
+                write(stdout, 9086) dr2max
+                write(stdout, 9084) dr20
+             endif
           ELSE
              WRITE( stdout, 9083 ) etot, hwf_energy, dr2
+             if (do_fde .and. .not. fde_init_rho) then 
+              write(stdout, 9088) dr2max
+              write(stdout, 9087) dr20
+             endif
           END IF
+          !
+          if (do_fde .and. .not. fde_init_rho) then
+            write(stdout,*)
+            write(stdout,'(5X,''FDE: sum of frag energies ='',F17.8)') etot_sum
+            write(stdout,'(5X,''FDE: ewald double counting='',F17.8)') edc_fde
+            write(stdout,'(5X,''FDE: non additive kinetic ='',F17.8)') ekin_nadd
+            write(stdout,'(5X,''FDE: non additive E_XC    ='',F17.8)') etxc_nadd
+            write(stdout,'(5X,''FDE: total energy         ='',F17.8)') etot_fde
+          endif
           !
        ELSE
           !
           IF ( dr2 > eps8 ) THEN
+             if ( .not. do_fde ) &
              WRITE( stdout, 9080 ) etot, hwf_energy, dr2
+             if (do_fde .and. .not. fde_init_rho) then
+              write(stdout, 9086) dr2max
+              write(stdout, 9084) dr20
+              write(stdout,'(5X,''total Hartree energy      ='',F17.8)') fde_true_ehart
+             endif
           ELSE
+             if ( .not. do_fde ) &
              WRITE( stdout, 9082 ) etot, hwf_energy, dr2
+             if (do_fde .and. .not. fde_init_rho) then 
+              write(stdout, 9088) dr2max
+              write(stdout, 9087) dr20
+              write(stdout,'(5X,''total Hartree energy      ='',F17.8)') fde_true_ehart
+              if (fde_fractional) write(stdout,9089) charge
+             endif
           END IF
        END IF
        !
@@ -1275,6 +1412,11 @@ SUBROUTINE electrons_scf ( printout, exxen )
             /'     Harris-Foulkes estimate   =',0PF17.8,' Ry' &
             /'     estimated scf accuracy    <',1PE17.1,' Ry' )
 9085 FORMAT(/'     total all-electron energy =',0PF17.6,' Ry' )
+9084 FORMAT(/'     frag. estimated scf acc.  <',PF17.8,' Ry' ) ! fde
+9086 FORMAT(/'     max. frag. est. scf acc.  =',PF17.8,' Ry' )
+9087 FORMAT(/'     frag. estimated scf acc.  <',PE17.1,' Ry' )
+9088 FORMAT(/'     max. frag. est. scf acc.  =',PE17.1,' Ry' )
+9089 FORMAT(/'     variable fragment charge  =',PE17.1,' e-' )
 
   END SUBROUTINE print_energies
   !
