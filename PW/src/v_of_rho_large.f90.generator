@@ -95,7 +95,7 @@ SUBROUTINE v_hubbard_large(ns, v_hub, eth)
   USE io_global,            ONLY : stdout
 
   IMPLICIT NONE
-  !hack2018 ["v_hubbard", "PW/src/v_hubbard_large.f90"]
+  !hack2018 ["v_hubbard", "PW/src/v_of_rho.f90"]
 
 END SUBROUTINE v_hubbard_large
 !-------------------------------------
@@ -114,7 +114,7 @@ SUBROUTINE v_hubbard_nc_large(ns, v_hub, eth)
   USE io_global,            ONLY : stdout
 
   IMPLICIT NONE
-  !hack2018 ["v_hubbard_nc", "PW/src/v_hubbard_large.f90"]
+  !hack2018 ["v_hubbard_nc", "PW/src/v_of_rho.f90"]
 
 END SUBROUTINE v_hubbard_nc_large
 !-------------------------------------------
@@ -131,7 +131,7 @@ SUBROUTINE v_h_of_rho_r_large( rhor, ehart, charge, v )
   USE lsda_mod,        ONLY : nspin
   !
   IMPLICIT NONE
-  !hack2018 ["v_h_of_rho_r", "PW/src/v_hubbard_large.f90"]
+  !hack2018 ["v_h_of_rho_r", "PW/src/v_of_rho.f90"]
 
 END SUBROUTINE v_h_of_rho_r_large
 !----------------------------------------------------------------------------
@@ -151,6 +151,6 @@ SUBROUTINE gradv_h_of_rho_r_large( rho, gradv )
   USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
   !
   IMPLICIT NONE
-  !hack2018 ["gradv_h_of_rho_r", "PW/src/v_hubbard_large.f90"]
+  !hack2018 ["gradv_h_of_rho_r", "PW/src/v_of_rho.f90"]
 
 END SUBROUTINE gradv_h_of_rho_r_large
