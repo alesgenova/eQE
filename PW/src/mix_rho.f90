@@ -11,13 +11,7 @@
 ! This macro force the normalization of betamix matrix, usually not necessary
 !#define __NORMALIZE_BETAMIX
 !
-#if defined(__GFORTRAN__)
-#if (__GNUC__<4) || ((__GNUC__==4) && (__GNUC_MINOR__<8))
-#define __GFORTRAN_HACK
-#endif
-#endif
-
-#if defined(__GFORTRAN_HACK)   
+#if defined(__GFORTRAN__)  
 ! gfortran hack - for some mysterious reason gfortran doesn't save
 !                 derived-type variables even with the SAVE attribute
 MODULE mix_save
@@ -46,6 +40,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   USE gvecs,          ONLY : ngms
   USE lsda_mod,       ONLY : nspin
   USE control_flags,  ONLY : imix, ngm0, tr2, io_level
+  USE control_flags,  ONLY : iverbosity
   ! ... for PAW:
   USE uspp_param,     ONLY : nhm
   USE scf,            ONLY : scf_type, create_scf_type, destroy_scf_type, &
@@ -54,10 +49,17 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
                              mix_type_AXPY, davcio_mix_type, rho_ddot, &
                              high_frequency_mixing, &
                              mix_type_COPY, mix_type_SCAL
-  USE io_global,     ONLY : stdout
+  USE scf,            ONLY : charge, scf_type_SCAL, scf_type_COPY
+  USE io_global,      ONLY : ionode, ionode_id
+  USE io_global,      ONLY : stdout
 #if defined(__GFORTRAN_HACK)
   USE mix_save
 #endif
+  USE fde
+  use fde_routines
+
+  use mp,                       only : mp_sum, mp_bcast, mp_max
+  use mp_images,                only : inter_fragment_comm, intra_image_comm
   !
   IMPLICIT NONE
   !
@@ -77,7 +79,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   LOGICAL, INTENT(OUT) :: &
     conv          ! .true. if the convergence has been reached
 
-  type(scf_type), intent(in)    :: input_rhout
+  type(scf_type), intent(inout)    :: input_rhout
   type(scf_type), intent(inout) :: rhoin
   !
   ! ... Here the local variables
@@ -95,6 +97,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   REAL(DP),ALLOCATABLE :: betamix(:,:), work(:)
   INTEGER, ALLOCATABLE :: iwork(:)
   REAL(DP) :: gamma0
+  REAL(DP) :: frag_mixing_beta, charge_rhoin, charge_rhout ! mixing factor
 #if defined(__NORMALIZE_BETAMIX)
   REAL(DP) :: norm2, obn
 #endif
@@ -103,7 +106,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   INTEGER, SAVE :: &
     mixrho_iter = 0    ! history of mixing
-#if !defined(__GFORTRAN_HACK)
+#if !defined(__GFORTRAN)
   TYPE(mix_type), ALLOCATABLE, SAVE :: &
     df(:),        &! information from preceding iterations
     dv(:)          !     "  "       "     "        "  "
@@ -111,12 +114,15 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   REAL(DP) :: dr2_paw, norm
   INTEGER, PARAMETER :: read_ = -1, write_ = +1
   !
+  INTEGER :: thefragment ! the fragment with largest SCF error
+  INTEGER :: ispin
   !
   CALL start_clock( 'mix_rho' )
   !
   ngm0 = ngms
   !
   mixrho_iter = iter
+  frag_mixing_beta = alphamix
   !
   IF ( n_iter > maxmix ) CALL errore( 'mix_rho', 'n_iter too big', 1 )
   !
@@ -127,14 +133,67 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   call assign_scf_to_mix_type(rhoin, rhoin_m)
   call assign_scf_to_mix_type(input_rhout, rhout_m)
-
+  !
+  !
+  if (fde_fractional) then
+    ! Normalize the charges to 1
+    charge_rhoin = charge(rhoin_m)
+    charge_rhout = charge(rhout_m)
+    if (iverbosity > 10 ) write(stdout,*) '==> ch_in', charge_rhoin
+    if (iverbosity > 10 ) write(stdout,*) '==> ch_out', charge_rhout
+    if (charge_rhoin>1.0d-8) call mix_type_SCAL (1.0d0/charge_rhoin,rhoin_m)
+    if (charge_rhout>1.0d-8) call mix_type_SCAL (1.0d0/charge_rhout,rhout_m)
+  endif
+  !
+  ! Evaluate E_h(delta_rho) 
+  !
   call mix_type_AXPY ( -1.d0, rhoin_m, rhout_m )
   !
   dr2 = rho_ddot( rhout_m, rhout_m, ngms )  !!!! this used to be ngm NOT ngms
   !
-  IF (dr2 < 0.0_DP) CALL errore('mix_rho','negative dr2',1)
+  if (fde_fractional) dr2 = dr2 * (charge_rhout**2.0d0)
+  !
+  if (do_fde .and. .not. fde_init_rho) then 
+    dr20 = dr2
+    dr2max = dr2
+    if (.not. fde_fat .and. ionode) then 
+        call mp_sum(dr2, inter_fragment_comm) ! keep scf independent if freeze and thaw, check for global convergence later
+        call mp_max(dr2max, inter_fragment_comm) 
+    endif
+    if (ionode) then
+      thefragment = 0
+      if (dr20 == dr2max) then
+          thefragment = currfrag
+      endif
+      call mp_sum (thefragment, inter_fragment_comm)
+      !
+      if (iverbosity > 10 ) write(stdout,'(a, I3)') " ==> Fragment with highest error: ", thefragment
+      !
+    endif
+  !
+    call mp_bcast(dr2, ionode_id, intra_image_comm)
+    call mp_bcast(dr2max, ionode_id, intra_image_comm)
+  !
+  ! anisotropic fragment mixing 
+    if ( .not. fde_fat .and. fde_split_mix ) then
+    CALL calc_frag_beta (frag_mixing_beta,alphamix,dr20,dr2)
+    endif
+  endif
+  !
+  IF (dr2 < 0._DP) CALL errore('mix_rho','negative dr2',1)
   !
   conv = ( dr2 < tr2 )
+  !
+  if (do_fde .and. .not. fde_init_rho ) conv = ( dr2max < tr2 )
+  !
+
+  !!! DISABLED FOR THE TIME BEING, STILL NOT WORKING WITH HGH PPs
+#if 0
+  if (do_fde .and. .not. fde_init_rho .and. dr2 < 100.d0*tr2) then
+    if (use_gaussians) call copy_rho_core_to_rho_gauss
+    use_gaussians = .false.
+  endif
+#endif
   !
   IF ( conv .OR. dr2 < tr2_min ) THEN
      !
@@ -302,9 +361,22 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   ! ... set new trial density
   !
-  call mix_type_AXPY ( alphamix, rhout_m, rhoin_m )
+  call mix_type_AXPY ( frag_mixing_beta, rhout_m, rhoin_m )
+  !
+  if (fde_fractional) then
+    if (charge_rhoin>1.0d-8) call scf_type_SCAL (1.0d0/charge_rhoin,rhoin)
+    if (charge_rhout>1.0d-8) call scf_type_SCAL (1.0d0/charge_rhout,input_rhout)
+  endif
+  !
   ! ... simple mixing for high_frequencies (and set to zero the smooth ones)
-  call high_frequency_mixing ( rhoin, input_rhout, alphamix )
+  call high_frequency_mixing ( rhoin, input_rhout, frag_mixing_beta )
+  !
+  if (fde_fractional) then
+    if (charge_rhoin>1.0d-8) call scf_type_SCAL (charge_rhoin,rhoin)
+    if (charge_rhout>1.0d-8) call scf_type_SCAL (charge_rhout,input_rhout)
+    if (charge_rhout>1.0d-8) call mix_type_SCAL (charge_rhout,rhoin_m)
+  endif
+  !
   ! ... add the mixed rho for the smooth frequencies
   call assign_mix_to_scf_type(rhoin_m,rhoin)
   !
