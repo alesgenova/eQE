@@ -30,6 +30,7 @@ SUBROUTINE force_us( forcenl )
   USE buffers,              ONLY : get_buffer
   USE becmod,               ONLY : calbec, becp, bec_type, allocate_bec_type, &
                                    deallocate_bec_type
+  USE becmod,               ONLY : is_allocated_bec_type
   USE mp_pools,             ONLY : inter_pool_comm
   USE mp_bands,             ONLY : intra_bgrp_comm
   USE mp,                   ONLY : mp_sum, mp_get_comm_null
@@ -46,7 +47,8 @@ SUBROUTINE force_us( forcenl )
   !
   forcenl(:,:) = 0.D0
   !
-  CALL allocate_bec_type ( nkb, nbnd, becp, intra_bgrp_comm )   
+  if (.not. is_allocated_bec_type(becp)) &  ! FDE
+          CALL allocate_bec_type ( nkb, nbnd, becp, intra_bgrp_comm )
   CALL allocate_bec_type ( nkb, nbnd, dbecp, intra_bgrp_comm )   
   ALLOCATE( vkb1( npwx, nkb ) )   
   IF (noncolin) then

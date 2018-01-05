@@ -21,13 +21,24 @@ SUBROUTINE summary()
   USE run_info,        ONLY : title
   USE constants,       ONLY : amu_ry, rytoev
   USE cell_base,       ONLY : alat, ibrav, omega, at, bg, celldm
+  USE large_cell_base, ONLY : alatl => alat, &
+                              ibravl => ibrav, &
+                              omegal => omega, &
+                              atl => at, &
+                              bgl => bg, &
+                              celldml => celldm  
   USE ions_base,       ONLY : nat, atm, zv, tau, ntyp => nsp, ityp
   USE cellmd,          ONLY : calc, cmass
   USE ions_base,       ONLY : amass
   USE gvect,           ONLY : ecutrho, ngm, ngm_g, gcutm
   USE gvecs,           ONLY : doublegrid, ngms, ngms_g, gcutms
+  USE gvecl,           ONLY : ecutrhol => ecutrho, &
+                              ngml => ngm, &
+                              ngml_g => ngm_g, &
+                              gcutml => gcutm
   USE fft_base,        ONLY : dfftp
   USE fft_base,        ONLY : dffts
+  USE fft_base,        ONLY : dfftl
   USE vlocal,          ONLY : starting_charge
   USE lsda_mod,        ONLY : lsda, starting_magnetization
   USE ldaU,            ONLY : lda_plus_U, Hubbard_u, Hubbard_j, Hubbard_alpha, &
@@ -54,6 +65,8 @@ SUBROUTINE summary()
   USE exx,             ONLY : ecutfock
   USE fcp_variables,   ONLY : lfcpopt, lfcpdyn
   USE fcp,             ONLY : fcp_summary
+  USE fde,             ONLY : do_fde, linterlock
+  use fde_routines
   !
   IMPLICIT NONE
   !
@@ -88,6 +101,7 @@ SUBROUTINE summary()
   IF ( title /= ' ') WRITE( stdout, "(/,5X,'Title: ',/,5X,A75)" ) title
   !
   WRITE( stdout, 100) ibrav, alat, omega, nat, ntyp
+  if ( do_fde .and. linterlock ) WRITE( stdout, 105) ibravl, alatl, omegal
   IF ( two_fermi_energies ) THEN
      WRITE( stdout, 101) nelec, nelup, neldw
   ELSE
@@ -117,6 +131,11 @@ SUBROUTINE summary()
        &     'convergence threshold     = ',1PE12.1,/,5X, &
        &     'mixing beta               = ',0PF12.4,/,5X, &
        &     'number of iterations used = ',I12,2X,A,' mixing')
+105 FORMAT( /,/,X, &
+       &     'Large bravais-lattice index     = ',I12,/,X, &
+       &     'Large lattice parameter (alat)  = ',F12.4,'  a.u.',/,X, &
+       &     'Large unit-cell volume          = ',F12.4,' (a.u.)^3')
+106 FORMAT(X, 'Large charge density cutoff = ',F12.4,'  Ry')
   !
   call write_dft_name ( ) 
   !
@@ -152,6 +171,10 @@ SUBROUTINE summary()
   ! ... ESM (Effective screening medium)
   !
   IF ( do_comp_esm )  CALL esm_summary()
+  !
+  ! ... FDE
+  !
+  IF (do_fde) CALL fde_summary()
   !
   ! ... FCP (Ficticious charge particle)
   !
@@ -195,6 +218,16 @@ SUBROUTINE summary()
        &   "reciprocal axes: (cart. coord. in units 2 pi/alat)",/, &
        &            3(15x,"b(",i1,") = (",3f10.6," )  ",/ ) )')  (apol,&
        &  (bg (ipol, apol) , ipol = 1, 3) , apol = 1, 3)
+    !
+  WRITE( stdout, '(5X, &
+    &     "Large crystal axes: (cart. coord. in units of alat)",/, &
+    &       3(15x,"a(",i1,") = (",3f11.6," )  ",/ ) )')  (apol,  &
+    (atl (ipol, apol) , ipol = 1, 3) , apol = 1, 3)
+  !
+  WRITE( stdout, '(5x, &
+    &   "Large reciprocal axes: (cart. coord. in units 2 pi/alat)",/, &
+    &            3(15x,"b(",i1,") = (",3f10.6," )  ",/ ) )')  (apol,&
+    &  (bgl (ipol, apol) , ipol = 1, 3) , apol = 1, 3)
   !
   CALL print_ps_info ( )
   !
@@ -379,7 +412,17 @@ SUBROUTINE summary()
        &               "FFT dimensions: (",i4,",",i4,",",i4,")")') &
        &         ngms_g, dffts%nr1, dffts%nr2, dffts%nr3
   ENDIF
-
+  !
+  ! FDE Interlocking cells...
+  !
+  if ( do_fde .and. linterlock ) then
+    WRITE( stdout, '(/5x,"Large  grid: ",i8," G-vectors", 5x, &
+       &               "FFT dimensions: (",i4,",",i4,",",i4,")")') &
+       &         ngml_g, dfftl%nr1, dfftl%nr2, dfftl%nr3
+  !WRITE( stdout, '(/57x,"(",i4,",",i4,",",i4,")")') dfftl%nr1x, dfftl%nr2x, dfftl%nr3x
+  endif
+  !
+  !
   IF ( real_space ) WRITE( stdout, &
        & '(5x,"Real space treatment of Beta functions,", &
        &      " V.1 (BE SURE TO CHECK MANUAL!)")' )
@@ -482,14 +525,44 @@ SUBROUTINE print_vdw_info
   USE io_files,        ONLY : psfile
   USE funct,           ONLY : get_inlc 
   USE kernel_table,    ONLY : vdw_table_name, vdw_kernel_md5_cksum
-
+  use kernel_table
+  USE fde,             ONLY: do_fde
+  USE input_parameters,     ONLY : fde_xc_funct
+  USE funct,         ONLY : dft_is_nonlocc
   integer :: inlc
 
   inlc = get_inlc()
+
+  if (dft_is_nonlocc()) then
+    if (do_fde) then
+          if (trim(fde_xc_funct) == 'SAME' ) then
+             inlc = get_inlc()
+          elseif (trim(fde_xc_funct) == 'RVV10' ) then
+             inlc = 3
+          elseif (trim(fde_xc_funct) == 'REV-VDW-DF2' .or. &
+                  trim(fde_xc_funct) == 'VDW-DF2-C09' .or. &
+                  trim(fde_xc_funct) == 'VDW-DF2' ) then
+             inlc = 2
+          elseif (trim(fde_xc_funct) == 'VDW-DF4'    .or. &
+                  trim(fde_xc_funct) == 'VDW-DF3'    .or. &
+                  trim(fde_xc_funct) == 'VDW-DF-C09' .or. &
+                  trim(fde_xc_funct) == 'VDW-DF' ) then
+             inlc = 1
+          endif
+          if (inlc > 0) call initialize_kernel_table(inlc)
+    else
+          inlc = get_inlc()
+          if (inlc > 0) call initialize_kernel_table(inlc)
+    endif
+  
+    if (trim(fde_xc_funct) /= 'SAME' .and. inlc .ne. 0) inlc = 0
+  
   if ( inlc > 0 ) then
      WRITE( stdout, '(/5x,"vdW kernel table read from file ",a)') TRIM (vdw_table_name)
      WRITE( stdout, '(5x,"MD5 check sum: ", a )') vdw_kernel_md5_cksum
-  endif 
+  endif
+  
+  endif
 
 END SUBROUTINE print_vdw_info
 !

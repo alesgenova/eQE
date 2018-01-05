@@ -37,6 +37,7 @@ subroutine stress ( sigma )
   USE ener,          ONLY : etot ! for ESM stress
   USE esm,           ONLY : do_comp_esm, esm_bc ! for ESM stress
   USE esm,           ONLY : esm_stres_har, esm_stres_ewa, esm_stres_loclong ! for ESM stress
+  use fde,           ONLY : do_fde
   !
   IMPLICIT NONE
   !
@@ -65,6 +66,9 @@ subroutine stress ( sigma )
   ELSE IF ( lelfield .AND. okvan ) THEN
      CALL infomsg('stres', 'stress with USPP and electric fields (Berry) not implemented')
      RETURN
+  ELSE IF (do_fde) THEN
+    CALL infomsg('stres', 'stress with FDE not implemented')
+    RETURN
   END IF
   !
   call start_clock ('stress')

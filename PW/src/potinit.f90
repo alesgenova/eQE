@@ -31,12 +31,14 @@ SUBROUTINE potinit()
   USE klist,                ONLY : nelec
   USE lsda_mod,             ONLY : lsda, nspin
   USE fft_base,             ONLY : dfftp
+  use fft_base,             ONLY : dfftl
   USE fft_interfaces,       ONLY : fwfft
   USE gvect,                ONLY : ngm, gstart, g, gg, ig_l2g
   USE gvecs,                ONLY : doublegrid
   USE control_flags,        ONLY : lscf, gamma_only
   USE scf,                  ONLY : rho, rho_core, rhog_core, &
                                    vltot, v, vrs, kedtau
+  use scf_large,            only : vltot_large => vltot
   USE funct,                ONLY : dft_is_meta
   USE wavefunctions_module, ONLY : psic
   USE ener,                 ONLY : ehart, etxc, vtxc, epaw
@@ -47,6 +49,7 @@ SUBROUTINE potinit()
   USE spin_orb,             ONLY : domag, lforcet
   USE mp,                   ONLY : mp_sum
   USE mp_bands ,            ONLY : intra_bgrp_comm, root_bgrp
+  USE mp_images,            ONLY : intra_image_comm
   USE io_global,            ONLY : ionode, ionode_id
   USE io_rho_xml,           ONLY : read_scf
   USE xml_io_base,          ONLY : check_file_exst
@@ -62,6 +65,16 @@ SUBROUTINE potinit()
   USE paw_init,             ONLY : PAW_atomic_becsum
   USE paw_onecenter,        ONLY : PAW_potential
   !
+  use input_parameters,     only : fde_kin_funct
+  !
+  USE fde,                  ONLY : do_fde, fde_init_rho, l2f, f2l, currfrag, &
+                                    NonlocalKernel, NonlocalKernel_fde, &
+                                    fde_gp, fde_gp_rhot, fde_r0,        &
+                                    fde_gp_alpha, rho_fde, rho_fde_large, &
+                                    reduced_cell, native_cell
+  use fde_routines
+  use kernel_routines,        ONLY : CreateKernel
+  !
   IMPLICIT NONE
   !
   REAL(DP)              :: charge           ! the starting charge
@@ -70,6 +83,7 @@ SUBROUTINE potinit()
   INTEGER               :: is
   LOGICAL               :: exst 
   CHARACTER(LEN=256)    :: dirname, filename
+  integer :: i
   !
   CALL start_clock('potinit')
   !
@@ -239,6 +253,28 @@ SUBROUTINE potinit()
   CALL plugin_scf_potential(rho,.FALSE.,-1.d0)
   !
   ! ... compute the potential and store it in v
+  !
+  if (do_fde .and. .not. fde_init_rho) then
+    call update_rho_fde(rho, .true.)
+    ! need para
+    if (currfrag == 1 ) then
+    !call plot_dense(vltot, 'vl0_dense.pp    ') 
+    !call plot_large(vltot_large, 'vl0_large.pp    ') 
+      else
+    !call plot_dense(vltot, 'vl1_dense.pp    ')    
+    !call plot_large(vltot_large, 'vl1_large.pp    ') 
+    endif
+  endif
+
+  if (do_fde) then
+    call flush_unit(stdout)
+    call CreateKernel(NonlocalKernel,rho,fde_kin_funct, &
+                    fde_gp, fde_gp_rhot, fde_r0, fde_gp_alpha, reduced_cell)
+    call flush_unit(stdout)
+    call CreateKernel(NonlocalKernel_fde,rho_fde_large,fde_kin_funct, &
+                    fde_gp, fde_gp_rhot, fde_r0, fde_gp_alpha, native_cell)
+    call flush_unit(stdout)
+  endif
   !
   CALL v_of_rho( rho, rho_core, rhog_core, &
                  ehart, etxc, vtxc, eth, etotefield, charge, v )

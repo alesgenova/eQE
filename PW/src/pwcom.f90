@@ -194,6 +194,22 @@ MODULE vlocal
 END MODULE vlocal
 !
 !
+MODULE vlocal_large
+  !
+  ! ... The variables needed for the local potential in reciprocal space
+  !
+  USE kinds, ONLY : DP
+  !
+  SAVE
+  !
+  COMPLEX(DP), ALLOCATABLE :: &
+       strf_large(:,:)              ! the structure factor
+  REAL(DP), ALLOCATABLE :: &
+       vloc_large(:,:)              ! the local potential for each atom type
+  !
+END MODULE vlocal_large
+!
+!
 MODULE wvfct
   !
   ! ... The variables needed to compute the band structure
@@ -236,6 +252,7 @@ MODULE ener
        etxc,           &! the exchange and correlation energy
        vtxc,           &! another exchange-correlation energy
        etxcc,          &! the nlcc exchange and correlation
+       !(additional) the nonlocal core correction (nlcc) exchange and correlation
        ewld,           &! the ewald energy
        elondon,        &! the semi-empirical dispersion energy
        edftd3,         &! the grimme-d3 dispersion energy
