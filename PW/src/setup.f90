@@ -39,12 +39,16 @@ SUBROUTINE setup()
   USE io_files,           ONLY : tmp_dir, prefix, xmlpun, delete_if_present
   USE constants,          ONLY : pi, degspin
   USE cell_base,          ONLY : at, bg, alat, tpiba, tpiba2, ibrav, omega
+  USE large_cell_base,    ONLY : atl => at, bgl => bg, alatl => alat
   USE ions_base,          ONLY : nat, tau, ntyp => nsp, ityp, zv
   USE basis,              ONLY : starting_pot, natomwfc
   USE gvect,              ONLY : gcutm, ecutrho
+  USE gvecl,              ONLY : gcutml => gcutm
   USE gvecw,              ONLY : gcutw, ecutwfc
   USE fft_base,           ONLY : dfftp
   USE fft_base,           ONLY : dffts
+  USE fft_base,           ONLY : dfftl
+  USE grid_subroutines,   ONLY : realspace_grids_init, realspace_supergrid_init
   USE fft_types,          ONLY : fft_type_init, fft_type_allocate
   USE fft_base,           ONLY : smap
   USE gvecs,              ONLY : doublegrid, gcutms, dual
@@ -69,6 +73,9 @@ SUBROUTINE setup()
                                  lbands, use_para_diag, gamma_only, &
                                  restart
   USE cellmd,             ONLY : calc
+  USE fde,                ONLY : do_fde, fde_frag_charge, frag_cell_split, linterlock, &
+                                 fde_frag_split_type, fde_max_divisor, &
+                                 fde_split_types
   USE uspp_param,         ONLY : upf, n_atom_wfc
   USE uspp,               ONLY : okvan
   USE ldaU,               ONLY : lda_plus_u, init_lda_plus_u
@@ -167,6 +174,10 @@ SUBROUTINE setup()
   ! ... set the number of electrons 
   !
   nelec = ionic_charge - tot_charge
+  if (do_fde) nelec = nelec - fde_frag_charge
+  if (abs(tot_charge)>0.0d0 .and. abs(fde_frag_charge)>0.0d0) then 
+    call errore('setup ','should not use fde_frag_charge together with tot_charge', 1 )
+  endif
   !
 #if defined (__OLDXML)
   IF ( (lfcpopt .OR. lfcpdyn) .AND. restart ) THEN
@@ -434,12 +445,49 @@ SUBROUTINE setup()
      gcutms = gcutm
      !
   END IF
+  if (do_fde) gcutml = gcutm
   !
   ! ... Test that atoms do not overlap
   !
   call check_atoms ( nat, tau, bg )
   !
+  !  ... if this is a FDE interlocking cells calculation, also set the dfftl descriptor
+  !
+  !write(stdout,*)'frag_cell_split',frag_cell_split
+  !write(stdout,*)'fde_frag_split_type',fde_frag_split_type
+  !write(stdout,*)'fde_max_divisor',fde_max_divisor
+  !write(stdout,*)'fde_split_types',fde_split_types
+  !write(stdout,*)'atl',atl
+  !write(stdout,*)'before realspace_supergrid_init'
+  !write(stdout,*)'dfftp',dfftp%nr1,dfftp%nr2,dfftp%nr3
+  !write(stdout,*)'dffts',dffts%nr1,dffts%nr2,dffts%nr3
+  if (do_fde .and. linterlock) then
+      call realspace_supergrid_init&
+        ( dfftl, dfftp, atl, bgl, gcutml, frag_cell_split, fde_frag_split_type, fde_max_divisor, fde_split_types )
+
+     at(:,1) = atl(:,1) *(frag_cell_split(1))
+     at(:,2) = atl(:,2) *(frag_cell_split(2))
+     at(:,3) = atl(:,3) *(frag_cell_split(3))
+
+     bg(:,1) = bgl(:,1) /(frag_cell_split(1))
+     bg(:,2) = bgl(:,2) /(frag_cell_split(2))
+     bg(:,3) = bgl(:,3) /(frag_cell_split(3))
+
+     alat = alatl
+
+     !celldm_small(1) = alat
+
+     CALL volume( alat, at(1,1), at(1,2), at(1,3), omega )
+
+     
+  endif
+  !
+  !
+  !
   ! ... calculate dimensions of the FFT grid
+  !write(stdout,*)'after realspace_supergrid_init'
+  !write(stdout,*)'dfftp',dfftp%nr1,dfftp%nr2,dfftp%nr3
+  !write(stdout,*)'dffts',dffts%nr1,dffts%nr2,dffts%nr3
   !
   ! ... if the smooth and dense grid must coincide, ensure that they do
   ! ... also if dense grid is set from input and smooth grid is not
