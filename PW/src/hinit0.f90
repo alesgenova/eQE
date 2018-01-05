@@ -25,17 +25,10 @@ SUBROUTINE hinit0()
   USE fft_base,     ONLY : dfftl
   USE gvect,        ONLY : ngm, g, eigts1, eigts2, eigts3
   USE gvecl,        ONLY : ngml => ngm, &
-<<<<<<< HEAD
                             gl => g, &
                             eigts1l => eigts1, &
                             eigts2l => eigts2, &
                             eigts3l => eigts3
-=======
-                           gl => g, &
-                           eigts1l => eigts1, &
-                           eigts2l => eigts2, &
-                           eigts3l => eigts3
->>>>>>> Johannes
   USE vlocal,       ONLY : strf
   USE gvecw,        ONLY : gcutw
   USE realus,       ONLY : generate_qpointlist,betapointlist,init_realspace_vars,real_space
@@ -43,44 +36,22 @@ SUBROUTINE hinit0()
   USE control_flags,ONLY : tqr, tq_smoothing, tbeta_smoothing
   USE io_global,    ONLY : stdout
   use fde,          only : do_fde, linterlock, fde_cell_offset, &
-<<<<<<< HEAD
                             fde_cell_shift, frag_cell_split, &
                             nat_fde, tau_fde, ityp_fde, strf_fde, strf_fde_large, &
                             f2l, tau_large
 use fde_routines
-=======
-                           fde_cell_shift, frag_cell_split, &
-                           nat_fde, tau_fde, ityp_fde, strf_fde, strf_fde_large, &
-                           f2l, tau_large
-  use fde_routines
-
-  use scf_large,          only : vltot_large => vltot
-  use scf,          only : vltot
-  ! debugging
-  use mp_images, only :my_image_id
->>>>>>> Johannes
   !
   IMPLICIT NONE
   !
   INTEGER :: ik                 ! counter on k points
-<<<<<<< HEAD
   integer :: nt
-=======
-  INTEGER :: nt                 !
->>>>>>> Johannes
   REAL(dp), ALLOCATABLE :: gk(:) ! work space
   !
   ! ... calculate the Fourier coefficients of the local part of the PP
   !
   CALL init_vloc()
   !
-<<<<<<< HEAD
   if (do_fde) call init_vloc_large()
-=======
-  if (do_fde) then
-    call init_vloc_large()
-  endif
->>>>>>> Johannes
   !
   ! ... k-point independent parameters of non-local pseudopotentials
   !
@@ -117,32 +88,12 @@ use fde_routines
   CALL struc_fact( nat, tau, nsp, ityp, ngm, g, bg, &
                    dfftp%nr1, dfftp%nr2, dfftp%nr3, strf, eigts1, eigts2, eigts3 )
   if (do_fde ) then 
-<<<<<<< HEAD
     !strf_fde(:,:) = strf(:,:)
     CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
               dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
     call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
     call setlocal_fde_large(vltot_large, strf_fde_large)
   endif
-=======
-    strf_fde(:,:) = strf(:,:)
-    !
-    CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
-                  dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
-    call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
-    call setlocal_fde_large(vltot_large, strf_fde_large) 
-    do nt = 1, nsp
-      call c_grid_gather_sum_scatter( strf_fde(:,nt) )
-    end do
-  endif
-  !if (do_fde.and.linterlock) then
-  !write(stdout,*) 'offset = ', fde_cell_offset
-  !write(stdout,*) 'shift  = ', fde_cell_shift
-  !write(stdout,*) 'off2   = ', fde_cell_shift - fde_cell_offset
-  !write(stdout,'(a,5i10)')'f2l =',f2l(1:5)
-  !call flush_unit(stdout)
-  !endif
->>>>>>> Johannes
   !
   ! these routines can be used to patch quantities that are dependent
   ! on the ions and cell parameters
