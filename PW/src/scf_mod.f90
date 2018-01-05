@@ -31,6 +31,10 @@ MODULE scf
   USE control_flags,ONLY : lxdm
   !
   SAVE
+  INTERFACE charge
+   Module Procedure charge_mix
+   Module Procedure charge_scf
+  END INTERFACE
   !
 ! Details of PAW implementation:
 ! NOTE: scf_type is used for two different quantities: density and potential.
@@ -51,6 +55,7 @@ MODULE scf
      REAL(DP),   ALLOCATABLE :: ns(:,:,:,:)! the LDA+U occupation matrix
      COMPLEX(DP),ALLOCATABLE :: ns_nc(:,:,:,:)!     ---       noncollinear case
      REAL(DP),   ALLOCATABLE :: bec(:,:,:) ! the PAW hamiltonian elements
+     LOGICAL             :: is_fde
   END TYPE scf_type
   !
   TYPE mix_type
@@ -113,6 +118,9 @@ CONTAINS
       endif
       if(allocate_becsum) allocate (rho%bec(nhm*(nhm+1)/2,nat,nspin))
    endif
+
+  ! assume it is not the FDE density
+  rho%is_fde=.false.
    
  return
  END SUBROUTINE create_scf_type
@@ -243,6 +251,7 @@ CONTAINS
   TYPE(scf_type), INTENT(INOUT) :: Y
   Y%of_r  = X%of_r
   Y%of_g  = X%of_g
+  Y%is_fde = X%is_fde
   if (dft_is_meta() .or. lxdm) then
      Y%kin_r = X%kin_r
      Y%kin_g = X%kin_g
@@ -292,6 +301,23 @@ CONTAINS
   RETURN
  end subroutine mix_type_COPY
  !
+ subroutine scf_type_SCAL(A,X)
+  !----------------------------------------------------------------------------
+  ! works like DSCAL for mix_type copy variables :  X = A * X 
+  ! NB: A is a REAL(DP) number
+  USE kinds, ONLY : DP
+  IMPLICIT NONE
+  REAL(DP),       INTENT(IN)    :: A
+  TYPE(scf_type), INTENT(INOUT) :: X
+  X%of_g(:,:)  = A * X%of_g(:,:)
+  X%of_r(:,:)  = A * X%of_r(:,:)
+  if (dft_is_meta() .or. lxdm) X%kin_g = A * X%kin_g
+  if (lda_plus_u_nc) X%ns_nc = A * X%ns_nc
+  if (lda_plus_u_co) X%ns    = A * X%ns
+  if (okpaw)      X%bec= A * X%bec
+  !
+  RETURN
+ end subroutine scf_type_SCAL
  !----------------------------------------------------------------------------
  subroutine mix_type_SCAL (A,X)
   !----------------------------------------------------------------------------
@@ -778,4 +804,55 @@ END FUNCTION ns_ddot
   !
   END SUBROUTINE
  !
+ !
+!
+!----------------------------------------
+FUNCTION charge_mix ( rho )
+
+USE gvect
+USE cell_base,     ONLY : omega
+USE mp_bands,      ONLY : intra_bgrp_comm
+USE mp,            ONLY : mp_sum
+
+type (mix_type), intent(in) :: rho
+real(dp)                    :: charge_mix
+real(dp)  :: ctmp
+
+ ! calculate charge of fragment
+  ctmp = 0.d0
+  if ( gstart == 2 ) then
+     ctmp = omega*real( rho%of_g(1,1) )
+     if ( nspin == 2 ) ctmp = ctmp + omega*real( rho%of_g(1,2) )
+  end if
+
+  call mp_sum(ctmp, intra_bgrp_comm)
+  charge_mix = ctmp
+
+END FUNCTION
+!----------------------------------------
+
+!----------------------------------------
+FUNCTION charge_scf ( rho )
+
+USE gvect
+USE cell_base,     ONLY : omega
+USE mp_bands,      ONLY : intra_bgrp_comm
+USE mp,            ONLY : mp_sum
+
+type (scf_type), intent(in) :: rho
+real(dp)                    :: charge_scf
+real(dp)  :: ctmp
+
+ ! calculate charge of fragment
+  ctmp = 0.d0
+  if ( gstart == 2 ) then
+     ctmp = omega*real( rho%of_g(1,1) )
+     if ( nspin == 2 ) ctmp = ctmp + omega*real( rho%of_g(1,2) )
+  end if
+
+  call mp_sum(ctmp, intra_bgrp_comm)
+  charge_scf = ctmp
+
+END FUNCTION
+!----------------------------------------
 END MODULE scf

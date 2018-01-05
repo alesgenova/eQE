@@ -19,6 +19,9 @@ SUBROUTINE stop_run( exit_status )
   USE mp_global,          ONLY : mp_global_end
   USE environment,        ONLY : environment_end
   USE io_files,           ONLY : iuntmp, seqopn
+  USE mp,                 ONLY : mp_barrier
+  USE mp_world,           ONLY : world_comm
+  USE fde,                ONLY : do_fde
   !
   IMPLICIT NONE
   !
@@ -49,6 +52,8 @@ SUBROUTINE stop_run( exit_status )
   CALL clean_pw( .TRUE. )
   !
   CALL environment_end( 'PWSCF' )
+  !
+  if (do_fde) call mp_barrier(world_comm)
   !
   CALL mp_global_end ()
   !

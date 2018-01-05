@@ -25,11 +25,27 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
   USE scf,              ONLY : scf_type
   USE cell_base,        ONLY : alat
   USE control_flags,    ONLY : ts_vdw
+  USE control_flags,    ONLY : conv_elec
   USE tsvdw_module,     ONLY : tsvdw_calculate, UtsvdW
+  USE mp,               ONLY : mp_sum
+  USE fde,              ONLY : do_fde, rho_fde, ekin_nadd, &
+                               etxc_nadd, rhog_core_fde, &
+                               rho_core_fde, fde_init_rho, &
+                               rhog_gauss, rho_gauss, &
+                               rhog_gauss_fde, rho_gauss_fde, &
+                               ekin0_nadd, etxc0_nadd, &
+                               reduced_cell
+  use fde_routines
+
+  use input_parameters, ONLY : fde_xc_funct, saop_add, saop_nadd
+  use io_global, only : stdout
+#ifdef __SAOP
+  USE saop, only: v_rho_saop
+#endif
   !
   IMPLICIT NONE
   !
-  TYPE(scf_type), INTENT(IN) :: rho  ! the valence charge
+  TYPE(scf_type), INTENT(INout) :: rho  ! the valence charge
   TYPE(scf_type), INTENT(INOUT) :: v ! the scf (Hxc) potential 
   !!!!!!!!!!!!!!!!! NB: NOTE that in F90 derived data type must be INOUT and 
   !!!!!!!!!!!!!!!!! not just OUT because otherwise their allocatable or pointer
@@ -53,10 +69,39 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
   !
   ! ... calculate exchange-correlation potential
   !
-  if (dft_is_meta() .and. (get_meta() /= 4)) then
-     call v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v%of_r, v%kin_r )
+  if ( .not. do_fde .or. ( do_fde .and. fde_init_rho .or. trim(fde_xc_funct) /= 'SAME' ) ) then
+    if (dft_is_meta()) then
+       call v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v%of_r, v%kin_r )
+    else
+      if (saop_add) then
+        write(stdout,*) "SAOP ADDITIVE"
+#ifdef __SAOP
+    call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
+#else
+    call errore('v_of_rho', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
+#endif
+      else
+        CALL v_xc( rho, rho_core, rhog_core, etxc, vtxc, v%of_r )
+      endif
+    endif
   else
-     CALL v_xc( rho, rho_core, rhog_core, etxc, vtxc, v%of_r )
+    etxc = 0.d0
+    ! FDE: if fde_kin_funct = SAME only calculate the fragment etxc explicitly
+    !      at convergency, so the etxc_nadd in the output actually means something.
+    if ( conv_elec ) then
+      if (saop_add) then
+        write(stdout,*) "SAOP ADDITIVE CONV"
+#ifdef __SAOP
+        call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
+#else
+      call errore('v_of_rho', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
+#endif
+      else
+        CALL v_xc( rho, rho_core, rhog_core, etxc, vtxc, v%of_r )
+      endif
+    endif
+    v%of_r(:,:) = 0.d0
+    vtxc = 0.d0
   endif
   !
   ! ... add a magnetic field  (if any)
@@ -65,7 +110,11 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
   !
   ! ... calculate hartree potential
   !
-  CALL v_h( rho%of_g, ehart, charge, v%of_r )
+  if (do_fde .and. .not. fde_init_rho) then
+    call v_h_fde( rho%of_g, rho%of_r, rho_fde%of_g, ehart, charge, v%of_r )
+  else
+    call v_h( rho%of_g, ehart, charge, v%of_r )
+  endif
   !
   ! ... LDA+U: build up Hubbard potential 
   !
@@ -94,6 +143,20 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
      END DO
   END IF
   !
+  ! ... FDE: NOTE: rho_fde is not updated here anymore, but in electrons() and electrons_scf()
+  !
+  if (do_fde .and. .not. fde_init_rho) then
+    call fde_nonadditive(rho, rho_fde, rho_core, rhog_core, &
+                         rho_core_fde, rhog_core_fde, &
+                         rho_gauss, rhog_gauss, &
+                         rho_gauss_fde, rhog_gauss_fde, &
+                         ekin_nadd, &
+                         ekin0_nadd, &
+                         etxc_nadd, &
+                         etxc0_nadd, v%of_r)
+  endif
+  !
+  !
   CALL stop_clock( 'v_of_rho' )
   !
   RETURN
@@ -117,6 +180,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   USE scf,              ONLY : scf_type
   USE mp,               ONLY : mp_sum
   USE mp_bands,         ONLY : intra_bgrp_comm
+  use control_flags,    only : iverbosity
   !
   IMPLICIT NONE
   !
@@ -307,7 +371,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   rhoneg(:) = rhoneg(:) * omega / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 )
   !
   if ((rhoneg(1) > eps8) .or. (rhoneg(2) > eps8)) then
-    write (stdout, '(/,5x, "negative rho (up,down): ", 2es10.3)') rhoneg(:)
+    if (iverbosity>10) write (stdout, '(/,5x, "negative rho (up,down): ", 2es10.3)') rhoneg(:)
   end if
   !
   vtxc = omega * vtxc / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 ) 
@@ -340,9 +404,9 @@ SUBROUTINE v_xc( rho, rho_core, rhog_core, etxc, vtxc, v )
   USE spin_orb,         ONLY : domag
   USE funct,            ONLY : xc, xc_spin, nlc, dft_is_nonlocc
   USE scf,              ONLY : scf_type
-  USE mp_bands,         ONLY : intra_bgrp_comm
+  USE mp_global,        ONLY : intra_pool_comm, intra_bgrp_comm
   USE mp,               ONLY : mp_sum
-
+  use control_flags,    only : iverbosity
   !
   IMPLICIT NONE
   !
@@ -501,7 +565,7 @@ SUBROUTINE v_xc( rho, rho_core, rhog_core, etxc, vtxc, v )
   !
   rhoneg(:) = rhoneg(:) * omega / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 )
   !
-  IF ( rhoneg(1) > eps8 .OR. rhoneg(2) > eps8 ) &
+  IF ( rhoneg(1) > eps8 .OR. rhoneg(2) > eps8 .and. iverbosity>10) &
      WRITE( stdout,'(/,5X,"negative rho (up, down): ",2ES10.3)') rhoneg
   !
   ! ... energy terms, local-density contribution
@@ -541,6 +605,7 @@ SUBROUTINE v_h( rhog, ehart, charge, v )
   USE cell_base, ONLY : omega, tpiba2
   USE control_flags, ONLY : gamma_only
   USE mp_bands,  ONLY: intra_bgrp_comm
+  USE mp_pools,  ONLY: intra_pool_comm
   USE mp,        ONLY: mp_sum
   USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
   USE esm,       ONLY: do_comp_esm, esm_hartree, esm_bc

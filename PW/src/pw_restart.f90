@@ -29,6 +29,7 @@ MODULE pw_restart
                           qexml_write_efield, qexml_write_planewaves, &
                           qexml_write_spin, qexml_write_magnetization, &
                           qexml_write_xc, qexml_write_exx, qexml_write_occ, &
+                          qexml_write_fde, qexml_write_interlock, &
                           qexml_write_bz,qexml_write_para, qexml_write_bands_info, &
                           qexml_write_bands_pw, qexml_write_esm, qexml_wfc_filename, &
                           default_fmt_version => qexml_default_version, &
@@ -36,6 +37,7 @@ MODULE pw_restart
                           qexml_read_header, qexml_read_cell, qexml_read_moving_cell, &
                           qexml_read_planewaves, qexml_read_ions, qexml_read_spin, &
                           qexml_read_magnetization, qexml_read_xc, qexml_read_occ, qexml_read_bz, &
+                          qexml_read_fde, qexml_read_interlock, &
                           qexml_read_bands_info, qexml_read_bands_pw, qexml_read_symmetry, &
                           qexml_read_efield, qexml_read_para, qexml_read_exx, qexml_read_esm
   !
@@ -157,7 +159,16 @@ MODULE pw_restart
       USE acfdt_ener,           ONLY : acfdt_in_pw 
       USE london_module,        ONLY : scal6, lon_rcut, in_C6, in_rvdw
       USE tsvdw_module,         ONLY : vdw_isolated
-      USE Coul_cut_2D,          ONLY : do_cutoff_2D 
+      USE Coul_cut_2D,          ONLY : do_cutoff_2D
+      USE fde,                  ONLY : do_fde, nfragments, currfrag, fde_frag_nspin, &
+      fde_nspin, use_gaussians, tau_large, linterlock, fde_si, &
+      fde_cell_offset, frag_cell_split, &
+      fde_max_divisor, fde_frag_split_type
+      USE input_parameters,     ONLY : fde_kin_funct, fde_xc_funct
+      !
+      USE large_cell_base,      ONLY : alatl => alat, atl => at, bgl => bg
+      USE fft_base,             ONLY : dfftl
+      USE gvecl,                ONLY : ngml_g => ngm_g, ngml => ngm
       
       !
       IMPLICIT NONE
@@ -430,6 +441,19 @@ MODULE pw_restart
                          get_exx_fraction(), get_gau_parameter(), &
                          get_screening_parameter(), exx_is_active(), ecutfock )
          !
+!-------------------------------------------------------------------------------
+! ... FROZEN DENSITY EMBEDDING
+!-------------------------------------------------------------------------------
+          CALL qexml_write_fde(do_fde, nfragments, currfrag, fde_kin_funct, fde_xc_funct, &
+                                fde_frag_nspin, fde_nspin, use_gaussians, fde_si)
+          !
+          CALL qexml_write_interlock( linterlock, dfftl%nr1, dfftl%nr2, dfftl%nr3, &
+                                      dfftl%nr1x,dfftl%nr2x,dfftl%nr3x, ngml_g, ngml,&
+                                      "Bohr", alatl, "Bohr", atl(:,1), atl(:,2), atl(:,3), &
+                                      "2 pi / a", bgl(:,1), bgl(:,2), bgl(:,3), &
+                                      nat, tau_large, "Bohr", &
+                                      fde_cell_offset, frag_cell_split, &
+                                      fde_max_divisor, fde_frag_split_type, alatl )
 !-------------------------------------------------------------------------------
 ! ... ESM
 !-------------------------------------------------------------------------------
@@ -816,6 +840,7 @@ MODULE pw_restart
       USE lsda_mod,      ONLY : nspin
       USE mp_bands,      ONLY : intra_bgrp_comm
       USE mp,            ONLY : mp_sum
+      use io_global, only : stdout     
       !
       IMPLICIT NONE
       !
@@ -828,6 +853,7 @@ MODULE pw_restart
                             lxc, locc, lbz, lbs, lwfc, lheader,          &
                             lsymm, lrho, lefield, ldim, &
                             lef, lexx, lesm
+      LOGICAL            :: lfde
       !
       INTEGER            :: tmp
       !
@@ -861,6 +887,7 @@ MODULE pw_restart
       lef     = .FALSE.
       lexx    = .FALSE.
       lesm    = .FALSE.
+      lfde    = .FALSE.
       !
       SELECT CASE( what )
       CASE( 'header' )
@@ -880,6 +907,7 @@ MODULE pw_restart
          !
          lcell = .TRUE.
          lions = .TRUE.
+         lfde = .TRUE.
          !
       CASE( 'wave' )
          !
@@ -912,6 +940,7 @@ MODULE pw_restart
          lbs     = .TRUE.
          lsymm   = .TRUE.
          lefield = .TRUE.
+         lfde    = .TRUE.
          !
       CASE( 'all' )
          !
@@ -928,6 +957,7 @@ MODULE pw_restart
          lsymm   = .TRUE.
          lefield = .TRUE.
          lrho    = .TRUE.
+         lfde    = .TRUE.
          !
       CASE( 'reset' )
          !
@@ -943,6 +973,7 @@ MODULE pw_restart
          lwfc_read    = .FALSE.
          lsymm_read   = .FALSE.
          lefield_read = .FALSE.
+         lfde_read    = .FALSE.
          !
       CASE( 'ef' )
          !
@@ -1044,6 +1075,15 @@ MODULE pw_restart
          END IF
         !
       ENDIF
+      IF ( lfde ) THEN
+      !
+      CALL read_fde( ierr )
+        IF ( ierr > 0 ) THEN
+         errmsg='error reading FDE and INTERLOCK in xml data file'
+         GOTO 100
+        END IF
+      !
+      END IF
       IF ( lxc ) THEN
          !
          CALL read_xc( ierr )
@@ -1178,6 +1218,7 @@ MODULE pw_restart
       !
       ! ... this routine reads the format version of the current xml datafile
       !
+      use io_global, only : stdout
       IMPLICIT NONE
       !
       INTEGER,          INTENT(OUT) :: ierr
@@ -1897,6 +1938,7 @@ MODULE pw_restart
       !------------------------------------------------------------------------
       !
       USE ions_base, ONLY : nsp
+      USE ions_base, ONLY : nat
       USE funct,     ONLY : enforce_input_dft
       USE ldaU,      ONLY : lda_plus_u, lda_plus_u_kind, Hubbard_lmax, &
                             Hubbard_l, Hubbard_U, Hubbard_J, Hubbard_alpha, &
@@ -1906,6 +1948,19 @@ MODULE pw_restart
       USE control_flags,ONLY : llondon, lxdm, ts_vdw
       USE london_module,ONLY : scal6, lon_rcut, in_C6, in_rvdw
       USE tsvdw_module, ONLY : vdw_isolated
+      !!!!
+      !  AG :
+      !  FDE xml section should not be read here, but in its own
+      !  routine ( read_fde ), see below
+      !  I'm leaving the call here just for compatibility reasons with the TDDFT
+      !  code.
+      !!!!
+      USE fde,                  ONLY : do_fde, nfragments, currfrag, fde_frag_nspin, &
+                                       fde_nspin, use_gaussians, linterlock, &
+                                       tau_large, tau_fde
+      USE input_parameters,     ONLY : fde_kin_funct, fde_xc_funct
+      !
+      use io_global, only: stdout
       !
       IMPLICIT NONE
       !
@@ -1995,7 +2050,126 @@ MODULE pw_restart
       !
     END SUBROUTINE read_xc
     !
+    !
+    !------------------------------------------------------------------------
+    SUBROUTINE read_fde( ierr )
+      !------------------------------------------------------------------------
+      !
+      USE ions_base, ONLY : nsp, nat
+      USE fde,                  ONLY : do_fde, nfragments, currfrag, fde_frag_nspin, &
+                                       fde_nspin, use_gaussians, linterlock, &
+                                       tau_large, tau_fde, fde_si, &
+                                       fde_cell_offset, frag_cell_split, fde_max_divisor, &
+                                       fde_frag_split_type
+      USE input_parameters,     ONLY : fde_kin_funct, fde_xc_funct
+      !
+      USE large_cell_base,      ONLY : alatl => alat, atl => at, bgl => bg, &
+                               omegal => omega, tpiba_l => tpiba, tpiba2_l => tpiba2
+      USE fft_base,             ONLY : dfftl
+      USE gvecl,                ONLY : ngml_g => ngm_g, ecutrho_l => ecutrho, ngml => ngm
+      USE gvect,                ONLY : ecutrho
+      use io_global, only : stdout
+      !
+      IMPLICIT NONE
+      !
+      INTEGER,          INTENT(OUT) :: ierr
+      !
+      INTEGER           :: nsp_, inlc
+      LOGICAL           :: nomsg = .true.
+      !
+      ierr = 0
+      IF ( lfde_read ) RETURN
+      !
+      IF ( .NOT. lions_read ) &
+         CALL errore( 'read_xc', 'read ions first', 1 )
+      !
+      IF ( ionode ) THEN
+         !
+         CALL qexml_read_fde( do_fde, nfragments, currfrag, fde_kin_funct, fde_xc_funct, &
+                              fde_frag_nspin, fde_nspin, use_gaussians, fde_si, ierr)
 
+         !
+         if (do_fde) &
+         CALL qexml_read_interlock( LINTERLOCK=linterlock, NR1L=dfftl%nr1, NR2L=dfftl%nr2, &
+                           NR3L=dfftl%nr3, NGML_G=ngml_g, NGML=ngml, NR1XL=dfftl%nr1x, NR2XL=dfftl%nr2x, &
+                           NR3XL=dfftl%nr3x, ALAT=alatl, A1=atl(:,1), &
+                           A2=atl(:,2), A3=atl(:,3), B1=bgl(:,1), B2=bgl(:,2), &
+                           B3=bgl(:,3), NAT=nat, TAU=tau_large, &
+                           FDE_CELL_OFFSET=fde_cell_offset, &
+                           FRAG_CELL_SPLIT=frag_cell_split, &
+                           FDE_MAX_DIVISOR=fde_max_divisor, &
+                           FDE_FRAG_SPLIT_TYPE=fde_frag_split_type, &
+                          IERR=ierr )
+         !
+         if ( do_fde.and.linterlock ) then
+            !
+            ! ... some internal variables
+            !
+            tpiba_l  = 2.D0 * pi / alatl
+            tpiba2_l = tpiba_l**2
+            !
+            ! ... to alat units
+            !
+            atl(:,:) = atl(:,:) / alatl
+            !
+            CALL volume( alatl, atl(1,1), atl(1,2), atl(1,3), omegal )
+            !
+            ecutrho_l = ecutrho
+            !
+            tau_large = tau_large / alatl
+            !
+            !write(stdout,*) 'tau_large restart = '
+            !write(199,*) tau_large
+         endif
+         !
+      END IF
+      !
+      !
+      CALL mp_bcast( do_fde, ionode_id, intra_image_comm )
+      CALL mp_bcast( nfragments, ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_kin_funct, ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_xc_funct, ionode_id, intra_image_comm )
+      CALL mp_bcast( currfrag, ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_frag_nspin, ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_nspin, ionode_id, intra_image_comm )
+      CALL mp_bcast( use_gaussians, ionode_id, intra_image_comm )
+      !
+      if (do_fde) then
+      CALL mp_bcast( linterlock,  ionode_id, intra_image_comm )          
+      CALL mp_bcast( alatl,      ionode_id, intra_image_comm )          
+      CALL mp_bcast( tpiba_l,     ionode_id, intra_image_comm )
+      CALL mp_bcast( tpiba2_l,    ionode_id, intra_image_comm )
+      CALL mp_bcast( omegal,     ionode_id, intra_image_comm )
+      CALL mp_bcast( atl,        ionode_id, intra_image_comm )
+      CALL mp_bcast( bgl,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr1,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr2,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr3,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr1x,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr2x,        ionode_id, intra_image_comm )
+      CALL mp_bcast( dfftl%nr3x,        ionode_id, intra_image_comm )
+      CALL mp_bcast( ngml_g,      ionode_id, intra_image_comm )
+      CALL mp_bcast( ngml,      ionode_id, intra_image_comm )
+      CALL mp_bcast( ecutrho_l,    ionode_id, intra_image_comm )
+      CALL mp_bcast( tau_large,    ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_cell_offset,   ionode_id, intra_image_comm )
+      CALL mp_bcast( frag_cell_split,    ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_frag_split_type,    ionode_id, intra_image_comm )
+      CALL mp_bcast( fde_max_divisor,    ionode_id, intra_image_comm )
+      endif
+      !
+      !call gather_coordinates( tau_large, tau_fde )
+      !
+! not broadcasting currfrag caused problems. Do we also need to broadcast these?  
+!      CALL mp_bcast( lda_plus_u_kind, ionode_id, intra_image_comm )
+      !
+      !
+      lfde_read = .TRUE.
+      !
+      RETURN
+      !
+    END SUBROUTINE read_fde
+    !
     !------------------------------------------------------------------------
     SUBROUTINE read_brillouin_zone( ierr )
       !------------------------------------------------------------------------
