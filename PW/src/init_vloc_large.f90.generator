@@ -24,6 +24,6 @@ subroutine init_vloc_large()
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_lr_Vloc
   !
   implicit none
-  !hack2018 ["init_vloc", "PW/src/init_vloc.f90"]
+  !hack2018 ["init_vloc", "PW/src/init_vloc.f90", "subroutine"]
 end subroutine init_vloc_large
 
