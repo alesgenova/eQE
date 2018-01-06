@@ -49,7 +49,7 @@ CONTAINS
 
     !! -------------------------------------------------------------------------                                    _
 
-  !hack2018 ["xc_rVV10", "Module/xc_rVV10.f90"]
+  !hack2018 ["xc_rVV10", "Modules/xc_rVV10.f90"]
   END SUBROUTINE xc_rVV10_large 
 
 
@@ -62,7 +62,7 @@ CONTAINS
 
   implicit none
 
-  !hack2018 ["stress_rVV10", "Module/xc_rVV10.f90"]
+  !hack2018 ["stress_rVV10", "Modules/xc_rVV10.f90"]
   END SUBROUTINE stress_rVV10_large
 
    !! ###############################################################################################################
@@ -74,7 +74,7 @@ CONTAINS
 
     implicit none
     
-   !hack2018 ["stress_rVV10_gradient", "Module/xc_rVV10.f90"]
+   !hack2018 ["stress_rVV10_gradient", "Modules/xc_rVV10.f90"]
    END SUBROUTINE stress_rVV10_gradient_large
 
 !! ###############################################################################################################
@@ -88,7 +88,7 @@ CONTAINS
 
 SUBROUTINE initialize_spline_interpolation_large (x, d2y_dx2)
   
-!hack2018 ["initialize_spline_interpolation", "Module/xc_rVV10.f90"]  
+!hack2018 ["initialize_spline_interpolation", "Modules/xc_rVV10.f90"]  
 end SUBROUTINE initialize_spline_interpolation_large
 
 
@@ -107,7 +107,7 @@ subroutine interpolate_kernel_large(k, kernel_of_k)
   
   USE kernel_table,             ONLY : r_max, Nr_points, kernel, d2phi_dk2, dk
 
-!hack2018 ["interpolate_kernel", "Module/xc_rVV10.f90"]  
+!hack2018 ["interpolate_kernel", "Modules/xc_rVV10.f90"]  
 end subroutine interpolate_kernel_large
 
 !! ###############################################################################################################
@@ -126,7 +126,7 @@ subroutine numerical_gradient_large(total_rho, gradient_rho)
    USE fft_base,          ONLY : dfftp
    USE fft_interfaces,    ONLY : fwfft, invfft 
    
-!hack2018 ["numerical_gradient", "Module/xc_rVV10.f90"]
+!hack2018 ["numerical_gradient", "Modules/xc_rVV10.f90"]
 end subroutine numerical_gradient_large
 
 END MODULE rVV10_large

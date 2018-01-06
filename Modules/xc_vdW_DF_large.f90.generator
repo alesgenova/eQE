@@ -1216,7 +1216,7 @@ CONTAINS
   SUBROUTINE initialize_spline_interpolation_large (x, d2y_dx2)
 
   implicit none
-!hack2018 ["initialize_spline_interpolation_large", "Modules/xc_vdW_DF_large.f90"]
+!hack2018 ["initialize_spline_interpolation", "Modules/xc_vdW_DF.f90"]
   END SUBROUTINE initialize_spline_interpolation_large
 
 
