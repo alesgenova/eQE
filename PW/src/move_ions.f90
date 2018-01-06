@@ -73,12 +73,26 @@ SUBROUTINE move_ions ( idone )
   LOGICAL               :: step_accepted, exst
   REAL(DP), ALLOCATABLE :: pos(:), grad(:)
   REAL(DP)              :: h(3,3), fcell(3,3)=0.d0, epsp1
+  real(dp)              :: at_(3,3), bg_(3,3)
   INTEGER,  ALLOCATABLE :: fixion(:)
   LOGICAL               :: conv_fcp
   !
   ! ... only one node does the calculation in the parallel case
   !
   IF ( ionode ) THEN
+     !
+     ! FDE interlocking: the absolute positions of the fragment are in
+     ! tau_large, copy it over to tau
+     if (do_fde) then
+       at_ = at
+       bg_ = bg
+       if (linterlock) then
+         !call scatter_coordinates( tau_fde, tau )
+         tau = tau_large
+         at_ = atl
+         bg_ = bgl
+       endif
+     endif
      !
      conv_ions = .FALSE.
      !
@@ -101,15 +115,34 @@ SUBROUTINE move_ions ( idone )
         !
         ! ... the bfgs procedure is used
         !  
-        ALLOCATE( pos( 3*nat ), grad( 3*nat ), fixion( 3*nat ) )
+        !ALLOCATE( pos( 3*nat ), grad( 3*nat ), fixion( 3*nat ) )
         !
         h = at * alat
         !
-        pos    =   RESHAPE( tau,    (/ 3 * nat /) )
-        CALL cryst_to_cart( nat, pos, bg, -1 )
-        grad   = - RESHAPE( force,  (/ 3 * nat /) ) * alat
-        CALL cryst_to_cart( nat, grad, at, -1 )
-        fixion =   RESHAPE( if_pos, (/ 3 * nat /) )
+!         pos    =   RESHAPE( tau,    (/ 3 * nat /) )
+!         CALL cryst_to_cart( nat, pos, bg, -1 )
+!         grad   = - RESHAPE( force,  (/ 3 * nat /) ) * alat
+!         CALL cryst_to_cart( nat, grad, at, -1 )
+!         fixion =   RESHAPE( if_pos, (/ 3 * nat /) )
+        !
+        if (do_fde) then
+           if (linterlock) h = atl * alatl
+           ALLOCATE( pos( 3*nat_fde ), grad( 3*nat_fde ), fixion( 3*nat_fde ) )
+           ! call gather_coordinates_nobcast(tau, tau_fde)
+           call gather_coordinates_nobcast(force, force_fde)
+           pos    =   RESHAPE( tau_fde,    (/ 3 * nat_fde /) )
+           CALL cryst_to_cart( nat_fde, pos, bg_, -1 )
+           grad   = - RESHAPE( force_fde,  (/ 3 * nat_fde /) ) * alat
+           CALL cryst_to_cart( nat_fde, grad, at_, -1 )
+           fixion =   RESHAPE( if_pos_fde, (/ 3 * nat_fde /) )
+        else
+           ALLOCATE( pos( 3*nat ), grad( 3*nat ), fixion( 3*nat ) )
+           pos    =   RESHAPE( tau,    (/ 3 * nat /) )
+           CALL cryst_to_cart( nat, pos, bg, -1 )
+           grad   = - RESHAPE( force,  (/ 3 * nat /) ) * alat
+           CALL cryst_to_cart( nat, grad, at, -1 )
+           fixion =   RESHAPE( if_pos, (/ 3 * nat /) )
+        endif
         !
         IF ( lmovecell ) THEN
            at_old = at
@@ -119,9 +152,18 @@ SUBROUTINE move_ions ( idone )
            epsp1 = epsp / ry_kbar
         END IF
         !
-        CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
-                   epsf, epsp1,  energy_error, gradient_error, cell_error,  &
-                   lmovecell, step_accepted, conv_ions, istep )
+        if (do_fde) then
+           CALL bfgs( pos, h, etot_fde, grad, fcell, fixion, tmp_dir, stdout, epse,&
+                      epsf, epsp1,  energy_error, gradient_error, cell_error,  &
+                      istep, nstep, step_accepted, conv_ions, lmovecell )
+        else
+           CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
+                      epsf, epsp1,  energy_error, gradient_error, cell_error,  &
+                      istep, nstep, step_accepted, conv_ions, lmovecell )
+        endif
+!         CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
+!                    epsf, epsp1,  energy_error, gradient_error, cell_error,  &
+!                    lmovecell, step_accepted, conv_ions, istep )
         !
         ! ... relax for FCP
         !
@@ -145,10 +187,24 @@ SUBROUTINE move_ions ( idone )
            CALL volume( alat, at(1,1), at(1,2), at(1,3), omega )
         END IF
         !
-        CALL cryst_to_cart( nat, pos, at, 1 )
-        tau    =   RESHAPE( pos, (/ 3 , nat /) )
-        CALL cryst_to_cart( nat, grad, bg, 1 )
-        force = - RESHAPE( grad, (/ 3, nat /) )
+        if (do_fde) then
+           CALL cryst_to_cart( nat_fde, pos, at_, 1 )
+           tau_fde    =   RESHAPE( pos, (/ 3 , nat_fde /) )
+           CALL cryst_to_cart( nat_fde, grad, bg_, 1 )
+           force_fde = - RESHAPE( grad, (/ 3, nat_fde /) )
+           call scatter_coordinates(tau_fde, tau)
+           if ( linterlock ) call scatter_coordinates(tau_fde, tau_large)
+           call scatter_coordinates(force_fde, force)
+        else
+           CALL cryst_to_cart( nat, pos, at, 1 )
+           tau    =   RESHAPE( pos, (/ 3 , nat /) )
+           CALL cryst_to_cart( nat, grad, bg, 1 )
+           force = - RESHAPE( grad, (/ 3, nat /) )
+        endif
+!         CALL cryst_to_cart( nat, pos, at, 1 )
+!         tau    =   RESHAPE( pos, (/ 3 , nat /) )
+!         CALL cryst_to_cart( nat, grad, bg, 1 )
+!         force = - RESHAPE( grad, (/ 3, nat /) )
         !
         IF ( conv_ions ) THEN
            !
@@ -166,13 +222,27 @@ SUBROUTINE move_ions ( idone )
               !  cell.
               !
               final_cell_calculation=.TRUE.
-              CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
-                                    stdout, tmp_dir )
+!               CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
+!                                     stdout, tmp_dir )
+              if (do_fde) then
+                 CALL terminate_bfgs ( etot_fde, epse, epsf, epsp, lmovecell, &
+                                       stdout, tmp_dir )
+              else
+                 CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
+                                       stdout, tmp_dir )
+              endif
               !
            ELSE
               !
-              CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
-                                    stdout, tmp_dir )
+!               CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
+!                                     stdout, tmp_dir )
+              if (do_fde) then
+                 CALL terminate_bfgs ( etot_fde, epse, epsf, epsp, lmovecell, &
+                                       stdout, tmp_dir )
+              else
+                 CALL terminate_bfgs ( etot, epse, epsf, epsp, lmovecell, &
+                                       stdout, tmp_dir )
+              endif
               !
            END IF
            !
@@ -318,10 +388,28 @@ SUBROUTINE move_ions ( idone )
      !
      CALL checkallsym( nat, tau, ityp)
      !
+     if ( do_fde .and. linterlock ) then
+       call gather_coordinates_nobcast(tau, tau_fde)
+       tau_large = tau
+     endif
+     !
+     !
   END IF
 
   CALL mp_bcast(restart_with_starting_magnetiz,ionode_id,intra_image_comm)
   CALL mp_bcast(final_cell_calculation,ionode_id,intra_image_comm)
+  !
+  if (do_fde) then
+     call mp_bcast( tau_fde, ionode_id, intra_image_comm )
+     if (linterlock) call mp_bcast( tau_large, ionode_id, intra_image_comm )
+     call mp_bcast( nat_fde, ionode_id, intra_image_comm )
+     call mp_bcast( force_fde, ionode_id, intra_image_comm )
+     ! If linterlock, regularize the fragment coordinates again...
+     
+     if (linterlock) call get_local_offset(fde_cell_offset, fde_cell_shift, frag_cell_split) 
+!     call reg_tau( tau, nat, atl, bgl )
+  endif
+  !
   IF ( lfcpopt .or. lfcpdyn ) CALL mp_bcast(nelec,ionode_id,intra_image_comm)
   !
   IF ( final_cell_calculation ) THEN
