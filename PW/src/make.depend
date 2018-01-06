@@ -358,17 +358,17 @@ d_matrix.o : ../../Modules/random_numbers.o
 d_matrix.o : symm_base.o
 data_structure.o : ../../FFTXlib/fft_types.o
 data_structure.o : ../../Modules/cell_base.o
+data_structure.o : ../../Modules/cell_base_large.o
 data_structure.o : ../../Modules/fft_base.o
 data_structure.o : ../../Modules/gvecw.o
 data_structure.o : ../../Modules/io_global.o
 data_structure.o : ../../Modules/kind.o
 data_structure.o : ../../Modules/mp_bands.o
+data_structure.o : ../../Modules/mp_large.o
 data_structure.o : ../../Modules/mp_pools.o
 data_structure.o : ../../Modules/recvec.o
 data_structure.o : ../../UtilXlib/mp.o
 data_structure.o : @fde@
-data_structure.o : @large_cell_base@
-data_structure.o : @mp_large@
 data_structure.o : @stick_set_large@
 data_structure.o : pwcom.o
 deriv_drhoc.o : ../../Modules/constants.o
@@ -418,6 +418,7 @@ efermit.o : ../../Modules/constants.o
 efermit.o : ../../Modules/io_global.o
 efermit.o : ../../Modules/kind.o
 electrons.o : ../../Modules/cell_base.o
+electrons.o : ../../Modules/cell_base_large.o
 electrons.o : ../../Modules/check_stop.o
 electrons.o : ../../Modules/constants.o
 electrons.o : ../../Modules/control_flags.o
@@ -448,7 +449,6 @@ electrons.o : ../../dft-d3/api.o
 electrons.o : ../../dft-d3/dftd3_qe.o
 electrons.o : @fde@
 electrons.o : @fde_routines@
-electrons.o : @large_cell_base@
 electrons.o : atomic_wfc_mod.o
 electrons.o : bp_mod.o
 electrons.o : buffers.o
@@ -482,9 +482,9 @@ esm.o : pwcom.o
 ewald.o : ../../Modules/constants.o
 ewald.o : ../../Modules/kind.o
 ewald.o : ../../Modules/mp_bands.o
+ewald.o : ../../Modules/mp_large.o
 ewald.o : ../../UtilXlib/mp.o
 ewald.o : @fde@
-ewald.o : @mp_large@
 ewald.o : Coul_cut_2D.o
 ewald.o : martyna_tuckerman.o
 ewald_dipole.o : ../../Modules/cell_base.o
@@ -550,6 +550,7 @@ find_group.o : ../../Modules/kind.o
 force_cc.o : ../../FFTXlib/fft_interfaces.o
 force_cc.o : ../../Modules/atom.o
 force_cc.o : ../../Modules/cell_base.o
+force_cc.o : ../../Modules/cell_base_large.o
 force_cc.o : ../../Modules/constants.o
 force_cc.o : ../../Modules/control_flags.o
 force_cc.o : ../../Modules/fft_base.o
@@ -563,7 +564,6 @@ force_cc.o : ../../Modules/wavefunctions.o
 force_cc.o : ../../UtilXlib/mp.o
 force_cc.o : @fde@
 force_cc.o : @fde_routines@
-force_cc.o : @large_cell_base@
 force_cc.o : pwcom.o
 force_cc.o : scf_mod.o
 force_corr.o : ../../FFTXlib/fft_interfaces.o
@@ -587,8 +587,8 @@ force_corr.o : scf_mod.o
 force_ew.o : ../../Modules/constants.o
 force_ew.o : ../../Modules/kind.o
 force_ew.o : ../../Modules/mp_bands.o
+force_ew.o : ../../Modules/mp_large.o
 force_ew.o : ../../UtilXlib/mp.o
-force_ew.o : @mp_large@
 force_ew.o : Coul_cut_2D.o
 force_hub.o : ../../Modules/becmod.o
 force_hub.o : ../../Modules/cell_base.o
@@ -620,8 +620,8 @@ force_lc_large.o : ../../FFTXlib/fft_interfaces.o
 force_lc_large.o : ../../Modules/constants.o
 force_lc_large.o : ../../Modules/fft_base.o
 force_lc_large.o : ../../Modules/kind.o
+force_lc_large.o : ../../Modules/mp_large.o
 force_lc_large.o : ../../UtilXlib/mp.o
-force_lc_large.o : @mp_large@
 force_lc_large.o : Coul_cut_2D.o
 force_lc_large.o : esm.o
 force_us.o : ../../Modules/becmod.o
@@ -641,6 +641,7 @@ force_us.o : buffers.o
 force_us.o : pwcom.o
 force_us.o : symme.o
 forces.o : ../../Modules/cell_base.o
+forces.o : ../../Modules/cell_base_large.o
 forces.o : ../../Modules/control_flags.o
 forces.o : ../../Modules/fft_base.o
 forces.o : ../../Modules/io_global.o
@@ -656,7 +657,6 @@ forces.o : ../../dft-d3/api.o
 forces.o : ../../dft-d3/dftd3_qe.o
 forces.o : @fde@
 forces.o : @fde_routines@
-forces.o : @large_cell_base@
 forces.o : bp_mod.o
 forces.o : esm.o
 forces.o : extfield.o
@@ -767,6 +767,7 @@ gradcorr.o : exx.o
 gradcorr.o : pwcom.o
 gradcorr_large.o : ../../FFTXlib/fft_interfaces.o
 gradcorr_large.o : ../../Modules/cell_base.o
+gradcorr_large.o : ../../Modules/cell_base_large.o
 gradcorr_large.o : ../../Modules/constants.o
 gradcorr_large.o : ../../Modules/control_flags.o
 gradcorr_large.o : ../../Modules/fft_base.o
@@ -774,7 +775,6 @@ gradcorr_large.o : ../../Modules/funct.o
 gradcorr_large.o : ../../Modules/kind.o
 gradcorr_large.o : ../../Modules/noncol.o
 gradcorr_large.o : ../../Modules/recvec.o
-gradcorr_large.o : @large_cell_base@
 gradcorr_large.o : @wavefunctions_module_large@
 gradcorr_large.o : exx.o
 gradcorr_large.o : pwcom.o
@@ -843,6 +843,7 @@ h_psi_meta.o : ../../Modules/wavefunctions.o
 h_psi_meta.o : pwcom.o
 h_psi_meta.o : scf_mod.o
 hinit0.o : ../../Modules/cell_base.o
+hinit0.o : ../../Modules/cell_base_large.o
 hinit0.o : ../../Modules/control_flags.o
 hinit0.o : ../../Modules/fft_base.o
 hinit0.o : ../../Modules/gvecw.o
@@ -852,7 +853,6 @@ hinit0.o : ../../Modules/kind.o
 hinit0.o : ../../Modules/recvec.o
 hinit0.o : @fde@
 hinit0.o : @fde_routines@
-hinit0.o : @large_cell_base@
 hinit0.o : atomic_wfc_mod.o
 hinit0.o : ldaU.o
 hinit0.o : pwcom.o
@@ -897,12 +897,14 @@ init_q_aeps.o : ../../Modules/uspp.o
 init_q_aeps.o : ldaU.o
 init_q_aeps.o : pwcom.o
 init_run.o : ../../Modules/cell_base.o
+init_run.o : ../../Modules/cell_base_large.o
 init_run.o : ../../Modules/control_flags.o
 init_run.o : ../../Modules/fft_base.o
 init_run.o : ../../Modules/funct.o
 init_run.o : ../../Modules/hdf5_qe.o
 init_run.o : ../../Modules/ions_base.o
 init_run.o : ../../Modules/mp_bands.o
+init_run.o : ../../Modules/mp_large.o
 init_run.o : ../../Modules/paw_variables.o
 init_run.o : ../../Modules/recvec.o
 init_run.o : ../../Modules/recvec_subs.o
@@ -913,8 +915,6 @@ init_run.o : ../../Modules/wavefunctions.o
 init_run.o : ../../UtilXlib/mp.o
 init_run.o : @fde@
 init_run.o : @fde_routines@
-init_run.o : @large_cell_base@
-init_run.o : @mp_large@
 init_run.o : @recvecl_subs@
 init_run.o : Coul_cut_2D.o
 init_run.o : bp_mod.o
@@ -977,16 +977,17 @@ init_vloc.o : ../../Modules/uspp.o
 init_vloc.o : Coul_cut_2D.o
 init_vloc.o : pwcom.o
 init_vloc_large.o : ../../Modules/atom.o
+init_vloc_large.o : ../../Modules/cell_base_large.o
 init_vloc_large.o : ../../Modules/gth.o
 init_vloc_large.o : ../../Modules/ions_base.o
 init_vloc_large.o : ../../Modules/kind.o
 init_vloc_large.o : ../../Modules/recvec.o
 init_vloc_large.o : ../../Modules/uspp.o
-init_vloc_large.o : @large_cell_base@
 init_vloc_large.o : Coul_cut_2D.o
 init_vloc_large.o : pwcom.o
 input.o : ../../Modules/bfgs_module.o
 input.o : ../../Modules/cell_base.o
+input.o : ../../Modules/cell_base_large.o
 input.o : ../../Modules/check_stop.o
 input.o : ../../Modules/constants.o
 input.o : ../../Modules/constraints_module.o
@@ -1020,7 +1021,6 @@ input.o : ../../UtilXlib/mp.o
 input.o : ../../dft-d3/api.o
 input.o : ../../dft-d3/dftd3_qe.o
 input.o : @fde@
-input.o : @large_cell_base@
 input.o : Coul_cut_2D.o
 input.o : a2fmod.o
 input.o : atomic_wfc_mod.o
@@ -1121,6 +1121,7 @@ manypw.o : ../../Modules/read_input.o
 manypw.o : ../../UtilXlib/mp.o
 martyna_tuckerman.o : ../../FFTXlib/fft_interfaces.o
 martyna_tuckerman.o : ../../Modules/cell_base.o
+martyna_tuckerman.o : ../../Modules/cell_base_large.o
 martyna_tuckerman.o : ../../Modules/constants.o
 martyna_tuckerman.o : ../../Modules/control_flags.o
 martyna_tuckerman.o : ../../Modules/fft_base.o
@@ -1132,7 +1133,6 @@ martyna_tuckerman.o : ../../Modules/recvec.o
 martyna_tuckerman.o : ../../Modules/ws_base.o
 martyna_tuckerman.o : ../../UtilXlib/mp.o
 martyna_tuckerman.o : @fde@
-martyna_tuckerman.o : @large_cell_base@
 martyna_tuckerman.o : pwcom.o
 memory_report.o : ../../LAXlib/mp_diag.o
 memory_report.o : ../../Modules/atom.o
@@ -1179,6 +1179,7 @@ move_ions.o : ../../FFTXlib/fft_types.o
 move_ions.o : ../../Modules/basic_algebra_routines.o
 move_ions.o : ../../Modules/bfgs_module.o
 move_ions.o : ../../Modules/cell_base.o
+move_ions.o : ../../Modules/cell_base_large.o
 move_ions.o : ../../Modules/constants.o
 move_ions.o : ../../Modules/control_flags.o
 move_ions.o : ../../Modules/fcp_variables.o
@@ -1194,7 +1195,6 @@ move_ions.o : ../../Modules/recvec.o
 move_ions.o : ../../UtilXlib/mp.o
 move_ions.o : @fde@
 move_ions.o : @fde_routines@
-move_ions.o : @large_cell_base@
 move_ions.o : atomic_wfc_mod.o
 move_ions.o : dynamics_module.o
 move_ions.o : fcp.o
@@ -1576,6 +1576,7 @@ pw_init_qexsd_input.o : ../../Modules/uspp.o
 pw_init_qexsd_input.o : pwcom.o
 pw_restart.o : ../../LAXlib/mp_diag.o
 pw_restart.o : ../../Modules/cell_base.o
+pw_restart.o : ../../Modules/cell_base_large.o
 pw_restart.o : ../../Modules/constants.o
 pw_restart.o : ../../Modules/control_flags.o
 pw_restart.o : ../../Modules/electrons_base.o
@@ -1607,7 +1608,6 @@ pw_restart.o : ../../Modules/xml_io_base.o
 pw_restart.o : ../../UtilXlib/mp.o
 pw_restart.o : ../../iotk/src/iotk_module.o
 pw_restart.o : @fde@
-pw_restart.o : @large_cell_base@
 pw_restart.o : Coul_cut_2D.o
 pw_restart.o : acfdt_in_pw.o
 pw_restart.o : atomic_wfc_mod.o
@@ -1696,6 +1696,7 @@ read_conf_from_file.o : pw_restart_new.o
 read_file.o : ../../FFTXlib/fft_interfaces.o
 read_file.o : ../../FFTXlib/fft_types.o
 read_file.o : ../../Modules/cell_base.o
+read_file.o : ../../Modules/cell_base_large.o
 read_file.o : ../../Modules/constants.o
 read_file.o : ../../Modules/control_flags.o
 read_file.o : ../../Modules/fft_base.o
@@ -1721,7 +1722,6 @@ read_file.o : ../../UtilXlib/mp.o
 read_file.o : @fde@
 read_file.o : @fde_routines@
 read_file.o : @grid_subroutines@
-read_file.o : @large_cell_base@
 read_file.o : @scf_large@
 read_file.o : Coul_cut_2D.o
 read_file.o : buffers.o
@@ -1956,6 +1956,7 @@ setlocal.o : scf_mod.o
 setup.o : ../../FFTXlib/fft_types.o
 setup.o : ../../LAXlib/mp_diag.o
 setup.o : ../../Modules/cell_base.o
+setup.o : ../../Modules/cell_base_large.o
 setup.o : ../../Modules/constants.o
 setup.o : ../../Modules/control_flags.o
 setup.o : ../../Modules/electrons_base.o
@@ -1978,7 +1979,6 @@ setup.o : ../../Modules/recvec.o
 setup.o : ../../Modules/uspp.o
 setup.o : @fde@
 setup.o : @grid_subroutines@
-setup.o : @large_cell_base@
 setup.o : atomic_wfc_mod.o
 setup.o : bp_mod.o
 setup.o : extfield.o
@@ -2185,6 +2185,7 @@ sumkg.o : ../../UtilXlib/mp.o
 sumkt.o : ../../Modules/kind.o
 summary.o : ../../Modules/atom.o
 summary.o : ../../Modules/cell_base.o
+summary.o : ../../Modules/cell_base_large.o
 summary.o : ../../Modules/constants.o
 summary.o : ../../Modules/control_flags.o
 summary.o : ../../Modules/fcp_variables.o
@@ -2205,7 +2206,6 @@ summary.o : ../../Modules/uspp.o
 summary.o : ../../UtilXlib/mp.o
 summary.o : @fde@
 summary.o : @fde_routines@
-summary.o : @large_cell_base@
 summary.o : bp_mod.o
 summary.o : esm.o
 summary.o : exx.o
@@ -2253,6 +2253,7 @@ trnvecc.o : ../../Modules/kind.o
 update_pot.o : ../../FFTXlib/fft_interfaces.o
 update_pot.o : ../../Modules/becmod.o
 update_pot.o : ../../Modules/cell_base.o
+update_pot.o : ../../Modules/cell_base_large.o
 update_pot.o : ../../Modules/constants.o
 update_pot.o : ../../Modules/control_flags.o
 update_pot.o : ../../Modules/fft_base.o
@@ -2270,7 +2271,6 @@ update_pot.o : ../../Modules/xml_io_base.o
 update_pot.o : ../../UtilXlib/mp.o
 update_pot.o : @fde@
 update_pot.o : @fde_routines@
-update_pot.o : @large_cell_base@
 update_pot.o : @scf_large@
 update_pot.o : buffers.o
 update_pot.o : extfield.o
@@ -2335,6 +2335,7 @@ v_of_rho.o : pwcom.o
 v_of_rho.o : scf_mod.o
 v_of_rho_large.o : ../../FFTXlib/fft_interfaces.o
 v_of_rho_large.o : ../../Modules/cell_base.o
+v_of_rho_large.o : ../../Modules/cell_base_large.o
 v_of_rho_large.o : ../../Modules/constants.o
 v_of_rho_large.o : ../../Modules/control_flags.o
 v_of_rho_large.o : ../../Modules/fft_base.o
@@ -2344,11 +2345,10 @@ v_of_rho_large.o : ../../Modules/ions_base.o
 v_of_rho_large.o : ../../Modules/kind.o
 v_of_rho_large.o : ../../Modules/mp_bands.o
 v_of_rho_large.o : ../../Modules/mp_global.o
+v_of_rho_large.o : ../../Modules/mp_large.o
 v_of_rho_large.o : ../../Modules/mp_pools.o
 v_of_rho_large.o : ../../Modules/recvec.o
 v_of_rho_large.o : ../../UtilXlib/mp.o
-v_of_rho_large.o : @large_cell_base@
-v_of_rho_large.o : @mp_large@
 v_of_rho_large.o : @scf_large@
 v_of_rho_large.o : Coul_cut_2D.o
 v_of_rho_large.o : esm.o
