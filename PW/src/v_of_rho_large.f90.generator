@@ -42,7 +42,7 @@ SUBROUTINE v_xc_large( rho, rho_core, rhog_core, etxc, vtxc, v )
   USE lsda_mod,         ONLY : nspin
   USE large_cell_base,  ONLY : omega  
   USE spin_orb,         ONLY : domag
-  USE funct,            ONLY : xc, xc_spin, nlc, dft_is_nonlocc
+  USE funct,            ONLY : xc, xc_spin, nlc => nlc_large, dft_is_nonlocc
   USE scf_large,        ONLY : scf_type
   USE mp_global,        ONLY : intra_pool_comm
   USE mp_bands,         ONLY : intra_bgrp_comm => intra_lgrp_comm
