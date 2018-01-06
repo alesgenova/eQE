@@ -1,0 +1,132 @@
+!
+! Copyright (C) 2001-2009 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!----------------------------------------------------------------------------
+
+MODULE rVV10_large
+ 
+  USE kinds,             ONLY : dp
+  USE constants,         ONLY : pi, e2
+  USE kernel_table,      ONLY : q_mesh, Nr_points, Nqs, r_max
+  USE mp,                ONLY : mp_bcast, mp_sum, mp_barrier
+  USE mp_bands,          ONLY : intra_bgrp_comm
+  USE io_global,         ONLY : ionode
+  USE fft_base,          ONLY : dfftp
+  USE fft_interfaces,    ONLY : fwfft, invfft 
+  USE control_flags,     ONLY : gamma_only, iverbosity
+  USE io_global,         ONLY : stdout
+  USE gvecl,             ONLY : ngm, nl, g, nlm, gg, igtongl,gl, ngl, gstart
+  USE large_cell_base,   ONLY : omega, tpiba, alat, at, tpiba2
+  IMPLICIT NONE
+  
+  real(dp), parameter :: epsr = 1.d-12, epsg = 1.D-10
+
+  real(dp) :: b_value = 6.3_DP
+  real(dp) :: C_value = 0.0093 
+
+  private  
+  public :: xc_rVV10_large,  &
+            interpolate_kernel_large, &
+            initialize_spline_interpolation_large, &
+            numerical_gradient_large, &
+            stress_rVV10_large, b_value_large
+
+CONTAINS
+
+!! #################################################################################################
+!!                                       |             |
+!!                                       |  xc_rVV10   |
+!!                                       |_____________|
+
+  SUBROUTINE xc_rVV10_large(rho_valence, rho_core, nspin, etxc, vtxc, v)
+    
+    !! Modules to include
+    !! -------------------------------------------------------------------------
+
+    !! -------------------------------------------------------------------------                                    _
+
+  !hack2018 ["xc_rVV10", "Module/xc_rVV10.f90"]
+  END SUBROUTINE xc_rVV10_large 
+
+
+  !! #################################################################################################
+  !!                   |                 |
+  !!                   |  STRESS_rVV10   |
+  !!                   |_________________|
+
+  SUBROUTINE stress_rVV10_large(rho_valence, rho_core, nspin, sigma)
+
+  implicit none
+
+  !hack2018 ["stress_rVV10", "Module/xc_rVV10.f90"]
+  END SUBROUTINE stress_rVV10_large
+
+   !! ###############################################################################################################
+   !!                             |                          |
+   !!                             |  stress_rVV10_gradient   |
+
+   SUBROUTINE stress_rVV10_gradient_large (total_rho, gradient_rho, q0, dq0_drho, &
+                                      dq0_dgradrho, thetas, sigma)
+
+    implicit none
+    
+   !hack2018 ["stress_rVV10_gradient", "Module/xc_rVV10.f90"]
+   END SUBROUTINE stress_rVV10_gradient_large
+
+!! ###############################################################################################################
+!!                                |                                   |
+!!                                |  INITIALIZE_SPLINE_INTERPOLATION  |
+!!                                |___________________________________|
+
+
+!! This routine is modeled after an algorithm from "Numerical Recipes in C" by Cambridge
+!! University Press, pages 96-97.  It was adapted for Fortran and for the problem at hand.
+
+SUBROUTINE initialize_spline_interpolation_large (x, d2y_dx2)
+  
+!hack2018 ["initialize_spline_interpolation", "Module/xc_rVV10.f90"]  
+end SUBROUTINE initialize_spline_interpolation_large
+
+
+!! ###############################################################################################################
+!!                                         |                    |
+!!                                         | INTERPOLATE_KERNEL |
+!!                                         |____________________|
+
+
+!! This routine is modeled after an algorithm from "Numerical Recipes in C" by Cambridge
+!! University Press, page 97.  Adapted for Fortran and the problem at hand.  This function is used to 
+!! find the Phi_alpha_beta needed for equations 11 and 14 of SOLER.
+
+
+subroutine interpolate_kernel_large(k, kernel_of_k)
+  
+  USE kernel_table,             ONLY : r_max, Nr_points, kernel, d2phi_dk2, dk
+
+!hack2018 ["interpolate_kernel", "Module/xc_rVV10.f90"]  
+end subroutine interpolate_kernel_large
+
+!! ###############################################################################################################
+!!                                       |                       |
+!!                                       |   NUMERICAL_GRADIENT  |
+!!                                       |_______________________|
+
+
+!! Calculates the gradient of the charge density numerically on the grid.  We use
+!! the PWSCF gradient style.
+
+subroutine numerical_gradient_large(total_rho, gradient_rho)
+
+   use gvect,             ONLY : ngm, g
+   USE cell_base,         ONLY : tpiba
+   USE fft_base,          ONLY : dfftp
+   USE fft_interfaces,    ONLY : fwfft, invfft 
+   
+!hack2018 ["numerical_gradient_large", "Module/xc_rVV10.f90"]
+end subroutine numerical_gradient_large
+
+END MODULE rVV10_large
