@@ -1,0 +1,19 @@
+!
+! Copyright (C) 2002-2011 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!------------------------------------------------------------------------------!
+  MODULE large_cell_base
+!------------------------------------------------------------------------------!
+
+    USE kinds, ONLY : DP
+    USE constants, ONLY : pi, bohr_radius_angs
+    USE io_global, ONLY : stdout
+!
+    IMPLICIT NONE
+    !hack2018 ["cell_base", "Modules/cell_base.f90", "module"]
+   END MODULE large_cell_base
+!------------------------------------------------------------------------------!
