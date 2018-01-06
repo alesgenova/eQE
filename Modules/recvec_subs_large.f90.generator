@@ -1,0 +1,16 @@
+!-----------------------------------------------------------------------
+SUBROUTINE gshells_large ( vc )
+!----------------------------------------------------------------------
+!
+! calculate number of G shells: ngl, and the index ng = igtongl(ig)
+! that gives the shell index ng for (local) G-vector of index ig
+!
+USE kinds,              ONLY : DP
+USE gvecl,              ONLY : gg, ngm, gl, ngl, igtongl
+USE constants,          ONLY : eps8
+!
+IMPLICIT NONE
+!
+!hack2018 ["gshells", "Modules/recvec_subs.f90"]
+
+END SUBROUTINE gshells_large
