@@ -138,11 +138,12 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE grid_subroutines,     ONLY : realspace_supergrid_init
   USE fft_types,            ONLY : fft_type_allocate
   USE recvec_subs,          ONLY : ggen, ggens
-  USE recvecl_subs,         ONLY : ggen_large
-  USE gvect,                ONLY : gg, ngm, g, gcutm, mill, &
+  USE gvect,                ONLY : gg, ngm, g, gcutm, mill, ngm_g, ig_l2g, &
                                    eigts1, eigts2, eigts3, nl, gstart
-  USE gvecl,                ONLY : ggl => gg, ngml => ngm, gl => g, gcutml => gcutm, &
-                                   eigts1l => eigts1, eigts2l => eigts2, eigts3l => eigts3, nll => nl, gstartl => gstart
+  USE gvecl,                ONLY : gg_l => gg, ngm_l => ngm, g_l => g, gcutm_l => gcutm, &
+                                   eigts1_l => eigts1, eigts2_l => eigts2, eigts3_l => eigts3, &
+                                   nl_l => nl, gstart_l => gstart, ig_l2g_l=>ig_l2g, &
+                                   mill_l => mill
   USE Coul_cut_2D,          ONLY : do_cutoff_2D, cutoff_fact
   USE fft_base,             ONLY : dfftp, dffts
   USE gvecs,                ONLY : ngms, nls, gcutms 
@@ -368,8 +369,10 @@ SUBROUTINE read_xml_file_internal(withbs)
   if (fde_si) fde_si_vec(currfrag) = 1
   if (ionode) call mp_sum( fde_si_vec, inter_fragment_comm )
   call mp_bcast( fde_si_vec, ionode_id, intra_image_comm )
-  CALL ggen ( dfftp, gamma_only, at, bg ) 
-  if ( do_fde ) call ggen_large( gamma_only, atl, bgl )
+  CALL ggen ( dfftp, gamma_only, at, bg, gcutm, ngm_g, ngm, &
+              g, gg, mill, ig_l2g, gstart ) 
+  if ( do_fde ) CALL ggen ( dfftl, gamma_only, atl, bgl, gcutm_l, ngm_g_l, ngm_l, &
+                            g_l, gg_l, mill_l, ig_l2g_l, gstart_l ) 
   CALL ggens( dffts, gamma_only, at, g, gg, mill, gcutms, ngms ) 
   IF (do_comp_esm) THEN
     CALL pw_readfile( 'esm', ierr )
