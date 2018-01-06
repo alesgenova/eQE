@@ -126,7 +126,7 @@ subroutine numerical_gradient_large(total_rho, gradient_rho)
    USE fft_base,          ONLY : dfftp
    USE fft_interfaces,    ONLY : fwfft, invfft 
    
-!hack2018 ["numerical_gradient_large", "Module/xc_rVV10.f90"]
+!hack2018 ["numerical_gradient", "Module/xc_rVV10.f90"]
 end subroutine numerical_gradient_large
 
 END MODULE rVV10_large
