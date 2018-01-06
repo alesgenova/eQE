@@ -25,7 +25,7 @@ SUBROUTINE gradcorr_large( rho, rhog, rho_core, rhog_core, etxc, vtxc, v )
 
   !
   IMPLICIT NONE
-!hack2018 ["gradcorr", "PW/src/gradcorr.f90"]
+!hack2018 ["gradcorr", "PW/src/gradcorr.f90" , "subroutine"]
 END SUBROUTINE gradcorr_large
 !
 !----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ SUBROUTINE gradrho_large( nrxx, a, ngm, g, nl, ga )
 
   !
   IMPLICIT NONE
-!hack2018 ["gradrho", "PW/src/gradcorr.f90"]
+!hack2018 ["gradrho", "PW/src/gradcorr.f90" , "subroutine"]
 END SUBROUTINE gradrho_large
 !
 !----------------------------------------------------------------------------
@@ -62,7 +62,7 @@ SUBROUTINE gradient_large( nrxx, a, ngm, g, nl, ga )
   USE fft_interfaces,ONLY : fwfft, invfft
   !
   IMPLICIT NONE
-!hack2018 ["gradient", "PW/src/gradcorr.f90"]
+!hack2018 ["gradient", "PW/src/gradcorr.f90" , "subroutine"]
 END SUBROUTINE gradient_large
 !----------------------------------------------------------------------------
 SUBROUTINE exx_gradient( nrxx, a, ngm, g, nl, ga )
@@ -144,7 +144,7 @@ SUBROUTINE grad_dot_large( nrxx, a, ngm, g, nl, alat, da )
   USE fft_interfaces,ONLY : fwfft, invfft
   !
   IMPLICIT NONE
-!hack2018 ["grad_dot", "PW/src/gradcorr.f90"]
+!hack2018 ["grad_dot", "PW/src/gradcorr.f90", "subroutine"]
 END SUBROUTINE grad_dot_large
 !--------------------------------------------------------------------
 SUBROUTINE hessian_large( nrxx, a, ngm, g, nl, ga, ha )
@@ -162,7 +162,7 @@ SUBROUTINE hessian_large( nrxx, a, ngm, g, nl, ga, ha )
   USE fft_interfaces,ONLY : fwfft, invfft
   !
   IMPLICIT NONE
-  !hack2018 ["hessian", "PW/src/gradcorr.f90"]
+  !hack2018 ["hessian", "PW/src/gradcorr.f90" , "subroutine"]
 END SUBROUTINE hessian_large
 
 !--------------------------------------------------------------------

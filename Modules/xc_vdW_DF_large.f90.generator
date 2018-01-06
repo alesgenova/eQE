@@ -210,7 +210,7 @@ CONTAINS
   SUBROUTINE xc_vdW_DF_large (rho_valence, rho_core, etxc, vtxc, v)
 
   implicit none
-!hack2018 ["xc_vdW_DF", "Modules/xc_vdW_DF.f90"]
+!hack2018 ["xc_vdW_DF", "Modules/xc_vdW_DF.f90", "subroutine"]
   END SUBROUTINE xc_vdW_DF_large
 
 
@@ -1216,7 +1216,7 @@ CONTAINS
   SUBROUTINE initialize_spline_interpolation_large (x, d2y_dx2)
 
   implicit none
-!hack2018 ["initialize_spline_interpolation", "Modules/xc_vdW_DF.f90"]
+!hack2018 ["initialize_spline_interpolation", "Modules/xc_vdW_DF.f90", "subroutine"]
   END SUBROUTINE initialize_spline_interpolation_large
 
 
@@ -1239,7 +1239,7 @@ CONTAINS
   SUBROUTINE interpolate_kernel_large (k, kernel_of_k)
 
   implicit none
-!hack2018 ["interpolate_kernel", "Modules/xc_vdW_DF.f90"]
+!hack2018 ["interpolate_kernel", "Modules/xc_vdW_DF.f90", "subroutine"]
   END SUBROUTINE interpolate_kernel_large
 
 
@@ -1257,7 +1257,7 @@ CONTAINS
   SUBROUTINE stress_vdW_DF_large (rho_valence, rho_core, nspin, sigma)
 
   implicit none
-!hack2018 ["stress_vdW_DF", "Modules/xc_vdW_DF.f90"]
+!hack2018 ["stress_vdW_DF", "Modules/xc_vdW_DF.f90", "subroutine"]
   END SUBROUTINE stress_vdW_DF_large
 
 
@@ -1564,7 +1564,7 @@ CONTAINS
   SUBROUTINE numerical_gradient_large (total_rho, grad_rho)
 
   implicit none
-!hack2018 ["numerical_gradient", "Modules/xc_vdW_DF.f90"]
+!hack2018 ["numerical_gradient", "Modules/xc_vdW_DF.f90", "subroutine"]
   END SUBROUTINE numerical_gradient_large
 
 

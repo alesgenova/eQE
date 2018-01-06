@@ -26,7 +26,7 @@ SUBROUTINE v_xc_meta_large( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   use control_flags,    only : iverbosity
   !
   IMPLICIT NONE
-  !hack2018 ["v_xc_meta", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_xc_meta", "PW/src/v_of_rho.f90", "subroutine"]
 END SUBROUTINE v_xc_meta_large
 !
 SUBROUTINE v_xc_large( rho, rho_core, rhog_core, etxc, vtxc, v )
@@ -50,7 +50,7 @@ SUBROUTINE v_xc_large( rho, rho_core, rhog_core, etxc, vtxc, v )
   use control_flags,    only : iverbosity
   !
   IMPLICIT NONE
-  !hack2018 ["v_xc", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_xc", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE v_xc_large
 !
@@ -76,7 +76,7 @@ SUBROUTINE v_h_large( rhog, ehart, charge, v )
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_2D, cutoff_hartree  
   !
   IMPLICIT NONE
-  !hack2018 ["v_h", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_h", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE v_h_large
 !
@@ -95,7 +95,7 @@ SUBROUTINE v_hubbard_large(ns, v_hub, eth)
   USE io_global,            ONLY : stdout
 
   IMPLICIT NONE
-  !hack2018 ["v_hubbard", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_hubbard", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE v_hubbard_large
 !-------------------------------------
@@ -114,7 +114,7 @@ SUBROUTINE v_hubbard_nc_large(ns, v_hub, eth)
   USE io_global,            ONLY : stdout
 
   IMPLICIT NONE
-  !hack2018 ["v_hubbard_nc", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_hubbard_nc", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE v_hubbard_nc_large
 !-------------------------------------------
@@ -131,7 +131,7 @@ SUBROUTINE v_h_of_rho_r_large( rhor, ehart, charge, v )
   USE lsda_mod,        ONLY : nspin
   !
   IMPLICIT NONE
-  !hack2018 ["v_h_of_rho_r", "PW/src/v_of_rho.f90"]
+  !hack2018 ["v_h_of_rho_r", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE v_h_of_rho_r_large
 !----------------------------------------------------------------------------
@@ -151,6 +151,6 @@ SUBROUTINE gradv_h_of_rho_r_large( rho, gradv )
   USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
   !
   IMPLICIT NONE
-  !hack2018 ["gradv_h_of_rho_r", "PW/src/v_of_rho.f90"]
+  !hack2018 ["gradv_h_of_rho_r", "PW/src/v_of_rho.f90", "subroutine"]
 
 END SUBROUTINE gradv_h_of_rho_r_large
