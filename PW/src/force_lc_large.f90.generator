@@ -1,0 +1,26 @@
+!
+! Copyright (C) 2001-2011 Quantum ESPRESSO group
+! This file is distributed under the terms of the
+! GNU General Public License. See the file `License'
+! in the root directory of the present distribution,
+! or http://www.gnu.org/copyleft/gpl.txt .
+!
+!
+!----------------------------------------------------------------------
+subroutine force_lc_large (nat, tau, ityp, alat, omega, ngm, ngl, &
+     igtongl, g, rho, nl, nspin, gstart, gamma_only, vloc, forcelc)
+  !----------------------------------------------------------------------
+  !
+  USE kinds
+  USE constants, ONLY : tpi
+ !USE mp_bands,  ONLY : intra_bgrp_comm
+  USE mp_large,  ONLY : intra_bgrp_comm => intra_lgrp_comm
+  USE mp,        ONLY : mp_sum
+ !USE fft_base,  ONLY : dfftp
+  USE fft_base,  ONLY : dfftp => dfftl
+  USE fft_interfaces, ONLY : fwfft
+  USE esm,       ONLY : esm_force_lc, do_comp_esm, esm_bc
+  USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_force_lc
+  implicit none
+  !hack2018["force_lc","PW/src/force_lc.f90"] 
+end subroutine force_lc
