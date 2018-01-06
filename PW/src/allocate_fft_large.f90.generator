@@ -30,5 +30,5 @@ SUBROUTINE allocate_fft_large
   USE wavefunctions_module, ONLY : psic, psic_nc
   USE funct,     ONLY: dft_is_meta
   IMPLICIT NONE
-  !hack2018 ["allocate_fft", "PW/src/allocate_fft.f90"]
+  !hack2018 ["allocate_fft", "PW/src/allocate_fft.f90", "subroutine"]
 END SUBROUTINE allocate_fft_large
