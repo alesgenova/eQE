@@ -13,11 +13,13 @@ SUBROUTINE init_run()
   USE symme,              ONLY : sym_rho_init
   USE wvfct,              ONLY : nbnd, et, wg, btype
   USE control_flags,      ONLY : lmd, gamma_only, smallmem, ts_vdw
-  USE gvect,              ONLY : g, gg, mill, &
+  USE gvect,              ONLY : g, gg, mill, gcutm, ig_l2g, ngm, ngm_g, &
        gstart ! to be comunicated to the Solvers if gamma_only
   USE gvecs,              ONLY : gcutms, ngms
   USE cell_base,          ONLY : at, bg, set_h_ainv
   USE large_cell_base,    ONLY : atl => at, bgl => bg !, set_h_ainv
+  USE gvect,              ONLY : g_l=>g, gg_l=>gg, mill_l=>mill, gcutm_l=>gcutm, &
+          ig_l2g_l=>ig_l2g, ngm_l=>ngm, ngm_g_l=>ngm_g, gstart_l ! to be comunicated to the Solvers if gamma_only
   USE cellmd,             ONLY : lmovecell
   USE dynamics_module,    ONLY : allocate_dyn_vars
   USE paw_variables,      ONLY : okpaw
@@ -73,12 +75,15 @@ SUBROUTINE init_run()
   ! ... generate reciprocal-lattice vectors and fft indices
   !
   IF( smallmem ) THEN
-     CALL ggen( dfftp, gamma_only, at, bg, no_global_sort = .TRUE. )
-     if ( do_fde .and. linterlock ) &
-       call ggen_large( dfftl, gamma_only, atl, bgl, no_global_sort = .true. )
+     CALL ggen( dfftp, gamma_only, at, bg, gcutm, ngm_g, ngm, &
+          g, gg, mill, ig_l2g, gstart, no_global_sort = .TRUE. )
+     if (do_fde) call ggen( dfftl, gamma_only, atl, bgl, gcutm_l, ngm_g_l, ngm_l, &
+                      g_l, gg_l, mill_l, ig_l2g_l, gstart_l, no_global_sort = .TRUE. )
   ELSE
-     CALL ggen( dfftp, gamma_only, at, bg )
-     if ( do_fde .and. linterlock ) call ggen_large( dfftl, gamma_only, atl, bgl )
+     CALL ggen( dfftp, gamma_only, at, bg, gcutm, ngm_g, ngm, &
+       g, gg, mill, ig_l2g, gstart )
+     if (do_fde) call ggen( dfftl, gamma_only, atl, bgl, gcutm_l, ngm_g_l, ngm_l, &
+                      g_l, gg_l, mill_l, ig_l2g_l, gstart_l )
   END IF
   CALL ggens( dffts, gamma_only, at, g, gg, mill, gcutms, ngms )
   if (gamma_only) THEN

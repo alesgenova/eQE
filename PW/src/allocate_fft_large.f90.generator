@@ -18,7 +18,7 @@ SUBROUTINE allocate_fft_large
   USE io_global, ONLY : stdout
   USE gvecl,     ONLY : ngm, g, gg, nl, nlm, mill, igtongl
   USE gvecs,   ONLY : ngms
-  USE fft_base,   ONLY : dfftp => dfftl 
+  USE fft_base,   ONLY : dfftp => dfftl, dffts
   USE ions_base, ONLY : nat
   USE lsda_mod,  ONLY : nspin
   USE spin_orb,  ONLY : domag
