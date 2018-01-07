@@ -463,7 +463,7 @@ MODULE read_namelists_module
        !
        ! ... FDE
        fde_fat = .FALSE.
-       fde_fat_thr = 1.E-_DP
+       fde_fat_thr = 1.E-5_DP
        fde_fat_maxstep = 0
        fde_init_rho = .false.
        fde_fat_mixing = 0._DP

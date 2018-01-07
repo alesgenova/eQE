@@ -11,8 +11,6 @@ MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../ELPA/src $(MOD_FLAG)../FFTXlib $(
 MODULES = \
 cell_base_large.o \
 mp_large.o \
-xc_vdW_DF_large.o \
-xc_rVV10_large.o \
 atom.o \
 autopilot.o \
 basic_algebra_routines.o \

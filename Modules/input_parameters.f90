@@ -1010,7 +1010,7 @@ MODULE input_parameters
           ! If true perform CP dynamics with constrained occupations
           ! to be used together with penalty functional ...
        LOGICAL :: fde_fat = .false.
-       REAL(DP) :: fde_fat_thr = 1.E-_DP
+       REAL(DP) :: fde_fat_thr = 1.E-5_DP
        INTEGER :: fde_fat_maxstep = 0
        LOGICAL :: fde_init_rho = .false.
        REAL(DP) :: fde_fat_mixing = 1._DP
