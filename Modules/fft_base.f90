@@ -46,15 +46,17 @@
         TYPE ( fft_type_descriptor ) :: dfftl ! descriptor for supersystem  grid
              !  Dimensions of the 3D real and reciprocal space FFT grid
              !  relative to the charge density and potential ("large" grid)
+        TYPE (sticks_map) :: smap_large
 
         SAVE
 
         PRIVATE
 
         PUBLIC :: dfftp, dffts, dfft3d, fft_type_descriptor
-        PUBLIC :: dfftl
         PUBLIC :: dfftb, fft_box_descriptor, fft_base_info
         PUBLIC :: smap, pstickdealloc
+        PUBLIC :: dfftl
+        public :: smap_large, pstickdealloc_large, fft_base_info_large
 
    CONTAINS
 
@@ -62,6 +64,10 @@
       SUBROUTINE pstickdealloc()
          CALL sticks_map_deallocate( smap )
       END SUBROUTINE pstickdealloc
+
+      SUBROUTINE pstickdealloc_large()
+         CALL sticks_map_deallocate( smap_large )
+      END SUBROUTINE pstickdealloc_large
 
 
       SUBROUTINE fft_base_info( ionode, stdout )
@@ -98,6 +104,41 @@
 
           RETURN
         END SUBROUTINE fft_base_info
+
+      SUBROUTINE fft_base_info_large( ionode, stdout )
+
+        LOGICAL, INTENT(IN) :: ionode
+        INTEGER, INTENT(IN) :: stdout
+        !
+        !  Display fft basic information
+        !
+        IF (ionode) THEN
+            WRITE( stdout,*)
+            IF ( nproc > 1 ) THEN
+            WRITE( stdout, '(5X,"Parallelization info Large")')
+            ELSE
+            WRITE( stdout, '(5X,"G-vector sticks info Large")')
+            ENDIF
+            WRITE( stdout, '(5X,"--------------------")')
+            WRITE( stdout, '(5X,"sticks:   large", &
+                        & 5X,"G-vecs:    large")')
+            IF ( nproc > 1 ) THEN
+            WRITE( stdout,'(5X,"Min",4X,I8,12X,I9)') &
+                  minval(dfftl%nsp), &
+                  minval(dfftl%ngl)
+            WRITE( stdout,'(5X,"Max",4X,I8,12X,I9)') &
+                  maxval(dfftl%nsp), &
+                  maxval(dfftl%ngl)
+            END IF
+            WRITE( stdout,'(5X,"Sum",4X,I8,12X,I9)') &
+                  sum(dfftl%nsp), &
+                  sum(dfftl%ngl)
+        ENDIF
+
+        IF(ionode) WRITE( stdout,*)
+
+        RETURN
+      END SUBROUTINE fft_base_info_large
 
 !=----------------------------------------------------------------------=!
    END MODULE fft_base

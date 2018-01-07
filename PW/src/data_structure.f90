@@ -19,15 +19,14 @@ SUBROUTINE data_structure( gamma_only )
   USE mp_large,   ONLY : me_lgrp, nproc_lgrp, root_lgrp, intra_lgrp_comm
   USE mp_pools,   ONLY : inter_pool_comm
   USE fft_base,   ONLY : dfftp, dffts, fft_base_info, smap
-  USE fft_base,   ONLY : dfftl
+  USE fft_base,   ONLY : dfftl, smap_large
   USE fft_types,  ONLY : fft_type_init
   USE cell_base,  ONLY : at, bg, tpiba
-  USE large_cell_base,  ONLY : bgl => bg, tpibal => tpiba
+  USE large_cell_base,  ONLY : atl => at, bgl => bg, tpibal => tpiba
   USE klist,      ONLY : xk, nks
   USE gvect,      ONLY : gcutm, gvect_init
   USE gvecs,      ONLY : gcutms, gvecs_init, doublegrid
   USE gvecl,      ONLY : gcutml => gcutm, gvecl_init
-  USE stick_set_large,  ONLY : pstickset_large
   use fde,        only : do_fde, linterlock
   use io_global,  only : stdout!, flush_unit
   USE gvecw,      ONLY : gcutw, gkcut
@@ -63,13 +62,6 @@ SUBROUTINE data_structure( gamma_only )
   ! ... find maximum value among all the processors
   !
   CALL mp_max (gkcut, inter_pool_comm )
-  if (do_fde .and. linterlock) then
-     gkcut = 0.d0
-     CALL pstickset_large( gamma_only, bgl, gcutml, gkcut, gcutml, &
-                  dfftl, dfftl, ngwl_ , ngml_ , ngsl_ , me_lgrp, &
-                  root_lgrp, nproc_lgrp, intra_lgrp_comm, ntask_groups )
-     call gvecl_init( ngml_ , intra_lgrp_comm )
-  endif
   !
   ! ... set up fft descriptors, including parallel stuff: sticks, planes, etc.
   !
@@ -95,6 +87,22 @@ SUBROUTINE data_structure( gamma_only )
   call gvect_init ( ngm_ , intra_bgrp_comm )
   call gvecs_init ( ngs_ , intra_bgrp_comm )
   !
+  if (do_fde) then
+    ! gkcut = 0.d0
+    ! CALL pstickset_large( gamma_only, bgl, gcutml, gkcut, gcutml, &
+    !              dfftl, dfftl, ngwl_ , ngml_ , ngsl_ , me_lgrp, &
+    !              root_lgrp, nproc_lgrp, intra_lgrp_comm, ntask_groups )
+    ! call gvecl_init( ngml_ , intra_lgrp_comm )
+    lpara =  ( nproc_lgrp > 1 )
+    CALL fft_type_init( dfftl, smap_large, "rho" , gamma_only, lpara, intra_lgrp_comm, atl, bgl, gcutml , 4.d0, nyfft=1 )
+    dfftl%rho_clock_label='fftl'
+    CALL fft_base_info_large( ionode, stdout )
+    ngm_ = dfftl%ngl( dfftl%mype + 1 )
+    IF( gamma_only ) THEN
+       ngm_ = (ngm_ + 1)/2
+    END IF
+    call gvecl_init ( ngm_ , intra_lgrp_comm )
+  endif
 
 END SUBROUTINE data_structure
 

@@ -12,6 +12,14 @@ PWOBJS = \
 pwscf.o 
 
 PWLIBS = \
+fde_functionals.o \
+fde_module.o \
+fde_routines.o \
+fde_types.o \
+scf_mod_large.o \
+kernel_module.o \
+kernel_routines.o \
+saop.o \
 a2fmod.o \
 add_bfield.o \
 add_efield.o \
