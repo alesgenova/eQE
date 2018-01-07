@@ -577,7 +577,7 @@ fde_routines.o : ../../Modules/recvec.o
 fde_routines.o : ../../Modules/splinelib.o
 fde_routines.o : ../../Modules/wavefunctions.o
 fde_routines.o : ../../UtilXlib/mp.o
-fde_routines.o : @saop@
+fde_routines.o : saop.o
 fde_routines.o : esm.o
 fde_routines.o : extfield.o
 fde_routines.o : fde_functionals.o
@@ -590,6 +590,14 @@ fde_routines.o : scf_mod.o
 fde_routines.o : scf_mod_large.o
 fde_types.o : ../../FFTXlib/fft_types.o
 fde_types.o : ../../Modules/kind.o
+fdepw.o : ../../Modules/command_line_options.o
+fdepw.o : ../../Modules/environment.o
+fdepw.o : ../../Modules/input_parameters.o
+fdepw.o : ../../Modules/io_global.o
+fdepw.o : ../../Modules/mp_global.o
+fdepw.o : ../../Modules/mp_images.o
+fdepw.o : ../../Modules/read_input.o
+fdepw.o : fde_module.o
 find_group.o : ../../Modules/kind.o
 force_cc.o : ../../FFTXlib/fft_interfaces.o
 force_cc.o : ../../Modules/atom.o
@@ -819,8 +827,8 @@ gradcorr_large.o : ../../Modules/funct.o
 gradcorr_large.o : ../../Modules/kind.o
 gradcorr_large.o : ../../Modules/noncol.o
 gradcorr_large.o : ../../Modules/recvec.o
-gradcorr_large.o : @wavefunctions_module_large@
 gradcorr_large.o : exx.o
+gradcorr_large.o : fde_module.o
 gradcorr_large.o : pwcom.o
 gweights.o : ../../Modules/kind.o
 h_1psi.o : ../../Modules/control_flags.o
@@ -957,7 +965,6 @@ init_run.o : ../../Modules/uspp.o
 init_run.o : ../../Modules/wannier_new.o
 init_run.o : ../../Modules/wavefunctions.o
 init_run.o : ../../UtilXlib/mp.o
-init_run.o : @recvecl_subs@
 init_run.o : Coul_cut_2D.o
 init_run.o : bp_mod.o
 init_run.o : dynamics_module.o
@@ -1776,7 +1783,6 @@ read_file.o : ../../Modules/recvec_subs.o
 read_file.o : ../../Modules/uspp.o
 read_file.o : ../../Modules/wavefunctions.o
 read_file.o : ../../UtilXlib/mp.o
-read_file.o : @grid_subroutines@
 read_file.o : Coul_cut_2D.o
 read_file.o : buffers.o
 read_file.o : esm.o
@@ -1937,8 +1943,6 @@ saop.o : ../../Modules/kind.o
 saop.o : ../../Modules/radial_grids.o
 saop.o : ../../Modules/uspp.o
 saop.o : ../../UtilXlib/mp.o
-saop.o : @xc_f90_lib_m@
-saop.o : @xc_f90_types_m@
 saop.o : fde_module.o
 saop.o : fde_types.o
 saop.o : pwcom.o
@@ -1986,11 +1990,11 @@ scf_mod_large.o : ../../FFTXlib/fft_interfaces.o
 scf_mod_large.o : ../../Modules/control_flags.o
 scf_mod_large.o : ../../Modules/fft_base.o
 scf_mod_large.o : ../../Modules/funct.o
+scf_mod_large.o : ../../Modules/ions_base.o
 scf_mod_large.o : ../../Modules/kind.o
 scf_mod_large.o : ../../Modules/paw_variables.o
 scf_mod_large.o : ../../Modules/recvec.o
 scf_mod_large.o : ../../Modules/uspp.o
-scf_mod_large.o : @fde_module@
 scf_mod_large.o : buffers.o
 scf_mod_large.o : extfield.o
 scf_mod_large.o : ldaU.o
@@ -2062,7 +2066,6 @@ setup.o : ../../Modules/qes_libs.o
 setup.o : ../../Modules/qes_types.o
 setup.o : ../../Modules/recvec.o
 setup.o : ../../Modules/uspp.o
-setup.o : @grid_subroutines@
 setup.o : atomic_wfc_mod.o
 setup.o : bp_mod.o
 setup.o : extfield.o
@@ -2409,7 +2412,7 @@ v_of_rho.o : ../../Modules/noncol.o
 v_of_rho.o : ../../Modules/recvec.o
 v_of_rho.o : ../../Modules/tsvdw.o
 v_of_rho.o : ../../UtilXlib/mp.o
-v_of_rho.o : @saop@
+v_of_rho.o : saop.o
 v_of_rho.o : Coul_cut_2D.o
 v_of_rho.o : esm.o
 v_of_rho.o : fde_module.o

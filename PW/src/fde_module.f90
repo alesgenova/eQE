@@ -229,6 +229,9 @@ MODULE fde
   real(dp) :: saop_pow = -1.0d0
   real(dp) :: saop_frac = -1.0d0
 
+  ! An auxiliary array of the large always available
+  complex(dp), allocatable :: psic_large(:)
+
 
 contains
 SUBROUTINE fde_fake_nspin ( flag , nspin0 )

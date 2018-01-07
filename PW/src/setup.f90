@@ -47,8 +47,7 @@ SUBROUTINE setup()
   USE gvecw,              ONLY : gcutw, ecutwfc
   USE fft_base,           ONLY : dfftp
   USE fft_base,           ONLY : dffts
-  USE fft_base,           ONLY : dfftl
-  USE grid_subroutines,   ONLY : realspace_grids_init, realspace_supergrid_init
+  USE fft_base,           ONLY : dfftl, smap_large
   USE fft_types,          ONLY : fft_type_init, fft_type_allocate
   USE fft_base,           ONLY : smap
   USE gvecs,              ONLY : doublegrid, gcutms, dual

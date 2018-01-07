@@ -809,11 +809,11 @@ SUBROUTINE fde_kin_lda(rho, rho_core, ene, v, dfftp, omega)
   use spin_orb,                 only : domag
   use mp_global,                only : intra_bgrp_comm
   use mp,                       only : mp_sum
-  USE fft_types,  ONLY : fft_dlay_descriptor
+  USE fft_types,  ONLY : fft_type_descriptor
   implicit none
   !-- parameters --------------------------------------------------------------
   type(scf_type), intent(in) :: rho
-  type(fft_dlay_descriptor) , intent(in) :: dfftp
+  type(fft_type_descriptor) , intent(in) :: dfftp
   real(dp), intent(in)       :: rho_core(dfftp%nnr)
   real(dp), intent(out)      :: ene
   real(dp), intent(out)      :: v(dfftp%nnr,nspin)
@@ -879,7 +879,7 @@ SUBROUTINE fde_compute_overlap(rho, rho_fde, rho_core, rhog_core, rho_core_fde, 
   use kinds,                    only : dp
   use constants,                only : pi
   use io_global,                only : stdout
-  USE fft_types,                ONLY : fft_dlay_descriptor
+  USE fft_types,                ONLY : fft_type_descriptor
   use lsda_mod,                 only : nspin
   use scf,                      only : scf_type
   use mp,                       only : mp_sum
@@ -911,7 +911,7 @@ SUBROUTINE fde_compute_overlap(rho, rho_fde, rho_core, rhog_core, rho_core_fde, 
   real(dp)     :: domega, omega, fac, coefficient
   logical      :: llarge
   !-- pointers to cell%  ---------------------------------------------------------
-  type(fft_dlay_descriptor) , pointer :: dfftp
+  type(fft_type_descriptor) , pointer :: dfftp
   real(dp),                   pointer :: g(:,:)
   integer,                    pointer :: nl(:)
 
@@ -986,7 +986,7 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
   use kinds,                    only : dp
   use constants,                only : pi
   use io_global,                only : stdout
-  USE fft_types,                ONLY : fft_dlay_descriptor
+  USE fft_types,                ONLY : fft_type_descriptor
   use lsda_mod,                 only : nspin
   use scf,                      only : scf_type
   use mp,                       only : mp_sum
@@ -1012,7 +1012,7 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
   real(dp), parameter :: Cs = 1.d0 / (2.d0 * (3.d0*pi*pi) ** (1.d0/3.d0))
   real(dp), parameter :: epsr = 1d-8, epsg = 1d-10
   !----------------------------------------------------------------------------
-  type(fft_dlay_descriptor) , pointer :: dfftp
+  type(fft_type_descriptor) , pointer :: dfftp
   real(dp), pointer :: g(:,:)
   integer, pointer :: nl(:)
   integer :: ngm
@@ -1157,7 +1157,7 @@ SUBROUTINE fde_kin_gp_rho0(rho, rho_core, rhog_core, ene, v, cell, Kernel)
   use kinds,                    only : dp
   use constants,                only : pi
   !use fft_base,                 only : dfftp
-  use fft_types,                only : fft_dlay_descriptor
+  use fft_types,                only : fft_type_descriptor
   USE fft_interfaces,           ONLY : fwfft, invfft
   use lsda_mod,                 only : nspin
   use scf,                      only : scf_type
@@ -1196,7 +1196,7 @@ SUBROUTINE fde_kin_gp_rho0(rho, rho_core, rhog_core, ene, v, cell, Kernel)
   complex(dp), allocatable :: aux_cplx(:)
   !
   ! pointers
-  type(fft_dlay_descriptor), pointer :: dfftp
+  type(fft_type_descriptor), pointer :: dfftp
   integer, pointer :: ngm, gstart, nl(:)
   real(dp), pointer :: at(:,:), alat, omega, tpiba, tpiba2
   real(dp), pointer :: g(:,:), gg(:)
@@ -3799,10 +3799,10 @@ subroutine potential_wall( dfftp, pot )
   use kinds , only : dp
   use io_global, only : stdout, ionode
   use fft_base, only : grid_scatter
-  USE fft_types,  ONLY : fft_dlay_descriptor
+  USE fft_types,  ONLY : fft_type_descriptor
   implicit none
 
-  type(fft_dlay_descriptor), intent(in) :: dfftp
+  type(fft_type_descriptor), intent(in) :: dfftp
   real(dp), intent(inout) :: pot(:)
 
 
@@ -3893,7 +3893,7 @@ subroutine grididx_f2g ( fragidx , globidx, dfftp, dfftl, shift_, offset_ )
 !
 ! Given the index of the grid point in the fragment cell, calculate the index in the global cell
 !
-  USE fft_types,  ONLY : fft_dlay_descriptor
+  USE fft_types,  ONLY : fft_type_descriptor
   use io_global , only : stdout
   implicit none
 
@@ -3905,7 +3905,7 @@ subroutine grididx_f2g ( fragidx , globidx, dfftp, dfftl, shift_, offset_ )
   integer   :: lolimit(3), hilimit(3)
   integer , intent(in) :: shift_(3)
   integer , intent(in) :: offset_(3)
-  type(fft_dlay_descriptor) , intent(in) :: dfftp, dfftl
+  type(fft_type_descriptor) , intent(in) :: dfftp, dfftl
   integer :: ijk_f(3) , ijk_g(3)
 
    ijk_f = 0
@@ -4012,7 +4012,7 @@ subroutine grididx_g2f ( globidx , fragidx, dfftp, dfftl, shift_, offset_ )
 ! Given the index of the grid point in the global cell, calculate the index in the fragment cell
 !
 ! DO NOT USE, use grididx_f2g instead
-  USE fft_types,  ONLY : fft_dlay_descriptor
+  USE fft_types,  ONLY : fft_type_descriptor
 
   implicit none
 
@@ -4023,7 +4023,7 @@ subroutine grididx_g2f ( globidx , fragidx, dfftp, dfftl, shift_, offset_ )
   integer , intent(in) :: offset_(3)
   integer :: offset(3)
   integer :: shift(3)
-  type(fft_dlay_descriptor) , intent(in) :: dfftp, dfftl
+  type(fft_type_descriptor) , intent(in) :: dfftp, dfftl
   integer :: ijk_f(3) , ijk_g(3)
 
    offset = offset_
@@ -4101,11 +4101,11 @@ end subroutine grididx_g2f
 
 
 subroutine calc_f2l(f2l, dfftp, dfftl, shift, offset)
-   USE fft_types,  ONLY : fft_dlay_descriptor
+   USE fft_types,  ONLY : fft_type_descriptor
 
    implicit none
 
-   type(fft_dlay_descriptor) , intent(in) :: dfftp, dfftl
+   type(fft_type_descriptor) , intent(in) :: dfftp, dfftl
    integer, intent(in)  :: shift(3)
    integer, intent(in)  :: offset(3)
    integer, intent(out) :: f2l(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)

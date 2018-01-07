@@ -5,7 +5,7 @@ module fde_types
 ! makes the code a bit clearer, but it's still not ideal
 !
 use kinds, only: dp
-use fft_types, only : fft_dlay_descriptor
+use fft_types, only : fft_type_descriptor
 implicit none
 
 type simulation_cell
@@ -20,7 +20,7 @@ type simulation_cell
   real(dp), pointer :: at(:,:), bg(:,:) ! lattice vectors 
   complex(dp), pointer :: strf(:,:), strf_fde(:,:) ! structure factors
   real(dp), pointer :: omega, alat, celldm(:), tpiba, tpiba2 ! volume
-  type(fft_dlay_descriptor), pointer :: dfftp
+  type(fft_type_descriptor), pointer :: dfftp
   !
   ! all the gvect stuff
   !
@@ -61,7 +61,7 @@ subroutine new_cell(this, at, bg, omega, alat, celldm, &
   real(dp), target, intent(in) :: at(:,:), bg(:,:), omega, alat, celldm(:)
   integer, target, intent(in) :: nat, nsp, ityp(:)
   real(dp), target, intent(in) :: tau(:,:), tpiba, tpiba2
-  type(fft_dlay_descriptor), target, intent(in) :: dfftp
+  type(fft_type_descriptor), target, intent(in) :: dfftp
   complex(dp), target, intent(in) :: strf(:,:), strf_fde(:,:)
   integer, target, intent(in) :: ngm, ngm_g, ngl, ngmx
   real(dp), target, intent(in) :: ecutrho, gcutm

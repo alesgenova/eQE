@@ -267,6 +267,12 @@ pw.x : $(PWOBJS) libpw.a $(LIBOBJS) $(QEMODS)
                ln -fs ../PW/src/$@ dist.x ; ln -fs ../PW/src/$@ manypw.x ; )
 # dist.x and manypw.x link the same executable pw.x
 
+fdepw.x : 
+	fdepw.o libpw.a $(LIBOBJS) $(QEMODS)
+	$(LD) $(LDFLAGS) -o $@ \
+	fdepw.o libpw.a $(QEMODS) $(LIBOBJS) $(LIBS)
+	- ( cd ../../bin; ln -fs ../PW/src/$@ . )
+
 libpw.a : $(PWLIBS) 
 	$(AR) $(ARFLAGS) $@ $?
 	$(RANLIB) $@

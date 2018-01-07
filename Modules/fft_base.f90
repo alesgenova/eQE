@@ -114,7 +114,7 @@
         !
         IF (ionode) THEN
             WRITE( stdout,*)
-            IF ( nproc > 1 ) THEN
+            IF ( dfftl%nproc > 1 ) THEN
             WRITE( stdout, '(5X,"Parallelization info Large")')
             ELSE
             WRITE( stdout, '(5X,"G-vector sticks info Large")')
@@ -122,7 +122,7 @@
             WRITE( stdout, '(5X,"--------------------")')
             WRITE( stdout, '(5X,"sticks:   large", &
                         & 5X,"G-vecs:    large")')
-            IF ( nproc > 1 ) THEN
+            IF ( dfftl%nproc > 1 ) THEN
             WRITE( stdout,'(5X,"Min",4X,I8,12X,I9)') &
                   minval(dfftl%nsp), &
                   minval(dfftl%ngl)

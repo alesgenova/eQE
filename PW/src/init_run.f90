@@ -32,7 +32,6 @@ SUBROUTINE init_run()
   USE fft_base,           ONLY : dfftl
   USE funct,              ONLY : dft_is_hybrid
   USE recvec_subs,        ONLY : ggen, ggens
-  USE recvecl_subs,       ONLY : ggen_large
   USE wannier_new,        ONLY : use_wannier    
   USE dfunct,             ONLY : newd
   USE esm,                ONLY : do_comp_esm, esm_init

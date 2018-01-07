@@ -7,7 +7,7 @@ module saop
   !USE gvect,                ONLY : nl, nlm, ngm, g, gg
   !USE lsda_mod,             ONLY : nspin
   !USE fft_base,             ONLY : dfftp
-  use fft_types,            only : fft_dlay_descriptor
+  use fft_types,            only : fft_type_descriptor
   USE control_flags, ONLY : gamma_only
   use fft_interfaces,       only: invfft, fwfft
   USE scf,                  ONLY : scf_type, create_scf_type, destroy_scf_type
@@ -37,7 +37,7 @@ contains
 
     implicit none
     TYPE(scf_type), INTENT(INout) :: rho
-  !  TYPE(fft_dlay_descriptor), INTENT(IN) :: dfftp
+  !  TYPE(fft_type_descriptor), INTENT(IN) :: dfftp
   !  integer, intent(in) :: ngm
     type(simulation_cell), intent(in) :: cell
     integer, intent(in) :: nspin
@@ -957,7 +957,7 @@ contains
                        nl, nlm, ngl, gl, igtongl, omega, tpiba2, maskr)
 
     use fft_interfaces, only: invfft
-    use fft_types, only: fft_dlay_descriptor
+    use fft_types, only: fft_type_descriptor
     use radial_grids, only: radial_grid_type
     USE control_flags, ONLY : gamma_only
     USE uspp_param,ONLY : upf
@@ -967,7 +967,7 @@ contains
     integer, intent(in) :: nat, ntyp, ngm, msh(ntyp)
     real(dp), intent(in) :: tau(3,nat)
     complex(dp), intent(in) :: strf(ntyp, ngm)
-    type(fft_dlay_descriptor), intent(in) :: dfftp
+    type(fft_type_descriptor), intent(in) :: dfftp
     type(radial_grid_type), intent(in) :: rgrid(:)
     integer, intent(in) :: ngl
     integer, intent(in) :: nl(ngm), nlm(ngm), igtongl(ngm)
@@ -1195,5 +1195,34 @@ contains
   end subroutine smoothen
 
 end module saop
+#else
+module saop
+  use kinds,                only: dp
+  use fde_types, only: simulation_cell
+  USE scf,                  ONLY : scf_type
+  
+  implicit none
 
+  public v_rho_saop
+
+contains
+  ! Initial driver to calculate sigma grad rho and whatnot
+  subroutine v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v, cell, nspin, v_pbe, v_lb) !dfftp, nspin, nl, nlm, ngm, g, gg, omega, alat, tpiba)
+
+    implicit none
+    TYPE(scf_type), INTENT(INout) :: rho
+  !  TYPE(fft_type_descriptor), INTENT(IN) :: dfftp
+  !  integer, intent(in) :: ngm
+    type(simulation_cell), intent(in) :: cell
+    integer, intent(in) :: nspin
+    REAL(DP),    INTENT(IN)    :: rho_core(cell%dfftp%nnr)
+    COMPLEX(DP), INTENT(IN)    :: rhog_core(cell%ngm)
+    REAL(DP),    INTENT(INOUT) :: v(cell%dfftp%nnr,nspin)
+    REAL(DP),    INTENT(INOUT) :: vtxc, etxc
+    REAL(DP), optional,    INTENT(INOUT) :: v_pbe(cell%dfftp%nnr,nspin)
+    REAL(DP), optional,    INTENT(INOUT) :: v_lb(cell%dfftp%nnr,nspin)
+
+    return
+  end subroutine v_rho_saop
+end module saop
 #endif

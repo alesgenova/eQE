@@ -18,7 +18,7 @@ MODULE scf_large
   !
   USE lsda_mod,     ONLY : nspin
   USE ldaU,         ONLY : lda_plus_u, Hubbard_lmax
-  USE fde_module,    ONLY : nat_fde
+  USE ions_base,    ONLY : nat
   USE buffers,      ONLY : open_buffer, close_buffer, get_buffer, save_buffer
   USE funct,        ONLY : dft_is_meta
   USE fft_base,     ONLY : dfftp => dfftl
@@ -31,10 +31,7 @@ MODULE scf_large
   USE control_flags,ONLY : lxdm
   !
   SAVE
-  INTERFACE charge
-   Module Procedure charge_mix
-   Module Procedure charge_scf
-  END INTERFACE
+
   !
 ! Details of PAW implementation:
 ! NOTE: scf_type is used for two different quantities: density and potential.

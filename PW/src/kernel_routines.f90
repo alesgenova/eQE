@@ -70,7 +70,7 @@ END SUBROUTINE AddLump
 
 SUBROUTINE CreateKernel(Kernel, rho, NAKE, gp, rhot, r0, alpha, cell)
   use kinds,                    only : dp
-  use fft_types,                only : fft_dlay_descriptor
+  use fft_types,                only : fft_type_descriptor
   use fde_types,                only : simulation_cell
   use constants,                only : pi
 !  use fft_base,                 only : dfftp
@@ -97,7 +97,7 @@ SUBROUTINE CreateKernel(Kernel, rho, NAKE, gp, rhot, r0, alpha, cell)
   integer :: i
   logical :: isNonlocal
 
-  type(fft_dlay_descriptor), pointer :: dfftp
+  type(fft_type_descriptor), pointer :: dfftp
   real(dp), pointer :: at(:,:), alat, tpiba, tpiba2, omega
   integer, pointer :: ngm, nl(:), gstart
   real(dp), pointer :: g(:,:), gg(:)
@@ -378,7 +378,7 @@ END FUNCTION LindG
 SUBROUTINE SimpleKernel (w,MaxPoints,rho_star,ThomasFermiFraction,cell)
   use kinds,                    only : dp
   use constants,                only : pi
-  use fft_types,                only : fft_dlay_descriptor
+  use fft_types,                only : fft_type_descriptor
   use fde_types,                only : simulation_cell
   USE fft_interfaces,           ONLY : fwfft, invfft
   use lsda_mod,                 only : nspin
@@ -451,7 +451,7 @@ END SUBROUTINE SimpleKernel
 SUBROUTINE GPLDAKernel ( w, rho, kfs, nkf, Maxpoints,ThomasFermiFraction,cell)
   use kinds,                    only : dp
   use constants,                only : pi
-  use fft_types,                only : fft_dlay_descriptor
+  use fft_types,                only : fft_type_descriptor
   use fde_types,                only : simulation_cell
 !  use fft_base,                 only : dfftp
   USE fft_interfaces,           ONLY : fwfft, invfft
@@ -475,7 +475,7 @@ SUBROUTINE GPLDAKernel ( w, rho, kfs, nkf, Maxpoints,ThomasFermiFraction,cell)
   real(dp) :: eta(cell%ngm), kf_star, t_tmp
   integer  :: ir, ir_ofmax, ikf, itmp, i, ipnt
 
-  type(fft_dlay_descriptor), pointer :: dfftp
+  type(fft_type_descriptor), pointer :: dfftp
   real(dp), pointer :: at(:,:), alat, tpiba, tpiba2, omega
   integer, pointer :: ngm, nl(:), gstart
   real(dp), pointer :: g(:,:), gg(:)
@@ -581,7 +581,7 @@ SUBROUTINE CreateRhoStar ( rho, rho_fde, rho_star, cell )
 ! in the making....
 
   USE kinds,                    only : dp
-  use fft_types,                only : fft_dlay_descriptor
+  use fft_types,                only : fft_type_descriptor
   USE fde_types,                only : simulation_cell
   USE fft_interfaces,           only : fwfft, invfft
   USE lsda_mod,                 only : nspin
@@ -597,7 +597,7 @@ SUBROUTINE CreateRhoStar ( rho, rho_fde, rho_star, cell )
   real(dp),      intent(out)         :: rho_star
 
 ! local vars
-  type(fft_dlay_descriptor), pointer :: dfftp
+  type(fft_type_descriptor), pointer :: dfftp
   real(dp)                           :: rho_tmp, charge, charge_fde
   real(dp), allocatable              :: w(:)
 
