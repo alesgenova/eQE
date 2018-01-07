@@ -285,7 +285,7 @@ SUBROUTINE init_wg_corr_large
   USE gvecl,         ONLY : ngm, gg, gstart_ => gstart, nl, nlm, ecutrho
   USE large_cell_base,     ONLY : at, alat, tpiba2, omega
 
-  INTEGER :: idx0, idx, ir, i,j,k, ig, nt
+  INTEGER :: idx, ir, i,j,k, j0, k0, ig, nt
   REAL(DP) :: r(3), rws, upperbound, rws2
   COMPLEX (DP), ALLOCATABLE :: aux(:)
   REAL(DP), EXTERNAL :: qe_erfc
@@ -303,13 +303,13 @@ SUBROUTINE init_wg_corr_large
   !
   alpha = 2.9d0
   upperbound = 1._dp
-  DO WHILE ( upperbound > 1.e-_dp) 
-     alpha = alpha - 0._dp  
+  DO WHILE ( upperbound > 1.e-7_dp) 
+     alpha = alpha - 0.1_dp  
      if (alpha<=0._dp) call errore('init_wg_corr','optimal alpha not found',1)
      upperbound = e2 * sqrt (2.d0 * alpha / tpi) * &
                        qe_erfc ( sqrt ( ecutrho / 4.d0 / alpha) )
   END DO
-  beta = 0._dp/alpha ! 1._dp/alpha
+  beta = 0.5_dp/alpha ! 1._dp/alpha
   ! write (*,*) " alpha, beta MT = ", alpha, beta
   !
   call ws_init(at,ws)
@@ -317,26 +317,25 @@ SUBROUTINE init_wg_corr_large
   gstart = gstart_
   gamma_only = gamma_only_
   !
-  ! Index for parallel summation
-  !
-#if defined (__MPI)
-  idx0 = dfftp%nr1x*dfftp%nr2x*dfftp%ipp(me_bgrp+1)
-#else
-  idx0 = 0 
-#endif
-  !
   ALLOCATE (aux(dfftp%nnr))
-  aux = CMPLX(0._dp,0._dp)
-  DO ir = 1, dfftp%nr1x*dfftp%nr2x * dfftp%npl
+  aux = (0._dp,0._dp)
+  j0 = dfftp%my_i0r2p ; k0 = dfftp%my_i0r3p
+  DO ir = 1, dfftp%nr1x*dfftp%my_nr2p*dfftp%my_nr3p
      !
-     ! ... three dimensional indices
+     ! ... three dimensional indexes
      !
-     idx = idx0 + ir - 1
-     k   = idx / (dfftp%nr1x*dfftp%nr2x)
-     idx = idx - (dfftp%nr1x*dfftp%nr2x)*k
+     idx = ir -1
+     k   = idx / (dfftp%nr1x*dfftp%my_nr2p)
+     idx = idx - (dfftp%nr1x*dfftp%my_nr2p)*k
+     k   = k + k0
      j   = idx / dfftp%nr1x
-     idx = idx - dfftp%nr1x*j
+     idx = idx - dfftp%nr1x * j
+     j   = j + j0
      i   = idx
+
+     ! ... do not include points outside the physical range
+
+     IF ( i >= dfftp%nr1 .OR. j >= dfftp%nr2 .OR. k >= dfftp%nr3 ) CYCLE
 
      r(:) = ( at(:,1)/dfftp%nr1*i + at(:,2)/dfftp%nr2*j + at(:,3)/dfftp%nr3*k )
 
@@ -354,10 +353,10 @@ SUBROUTINE init_wg_corr_large
 
   END DO
 
-  CALL fwfft ('Custom', aux, dfftp)
+  CALL fwfft ('Rho', aux, dfftp)
 
   do ig =1, ngm
-     wg_corr(ig) = omega * REAL(aux(nl(ig))) - smooth_coulomb_g( tpiba2*gg(ig))
+     wg_corr(ig) = omega * REAL(aux(dfftp%nl(ig))) - smooth_coulomb_g( tpiba2*gg(ig))
   end do
   wg_corr(:) =  wg_corr(:) * exp(-tpiba2*gg(:)*beta/4._dp)**2
   !
@@ -370,29 +369,29 @@ SUBROUTINE init_wg_corr_large
      ALLOCATE(plot(dfftp%nnr))
 
      filplot = 'wg_corr_r'
-     CALL invfft ('Custom', aux, dfftp)
+     CALL invfft ('Rho', aux, dfftp)
      plot(:) = REAL(aux(:))
      call  write_wg_on_file(filplot, plot)
 
      filplot = 'wg_corr_g'
-     aux(:) = CMPLX(0._dp,0._dp)
+     aux(:) = (0._dp,0._dp)
      do ig =1, ngm
-        aux(nl(ig))  = smooth_coulomb_g( tpiba2*gg(ig))/omega
+        aux(dfftp%nl(ig))  = smooth_coulomb_g( tpiba2*gg(ig))/omega
      end do
-     if (gamma_only) aux(nlm(1:ngm)) = CONJG( aux(nl(1:ngm)) )
+     if (gamma_only) aux(dfftp%nlm(1:ngm)) = CONJG( aux(dfftp%nl(1:ngm)) )
 
-     CALL invfft ('Custom', aux, dfftp)
+     CALL invfft ('Rho', aux, dfftp)
      plot(:) = REAL(aux(:))
      call  write_wg_on_file(filplot, plot)
 
      filplot = 'wg_corr_diff'
-     aux(:) = CMPLX(0._dp,0._dp)
-     aux(nl(1:ngm)) = wg_corr(1:ngm) / omega
+     aux(:) = (0._dp,0._dp)
+     aux(dfftp%nl(1:ngm)) = wg_corr(1:ngm) / omega
      if (gamma_only) then
-        aux(:) = 0._dp * aux(:) 
-        aux(nlm(1:ngm)) = aux(nlm(1:ngm)) + CONJG( aux(nl(1:ngm)) )
+        aux(:) = 0.5_dp * aux(:) 
+        aux(dfftp%nlm(1:ngm)) = aux(dfftp%nlm(1:ngm)) + CONJG( aux(dfftp%nl(1:ngm)) )
      end if
-     CALL invfft ('Custom', aux, dfftp)
+     CALL invfft ('Rho', aux, dfftp)
      plot(:) = REAL(aux(:))
      call  write_wg_on_file(filplot, plot)
 
@@ -412,7 +411,7 @@ SUBROUTINE init_wg_corr_large
 !----------------------------------------------------------------------------
   USE fft_base,        ONLY : dfftp => dfftl
   USE gvecl,           ONLY : gcutm
-  USE wvfct,           ONLY : ecutwfc
+  USE gvecw,           ONLY : ecutwfc
   USE gvecs,         ONLY : dual
   USE large_cell_base,       ONLY : at, alat, tpiba2, omega, ibrav, celldm
   USE ions_base,       ONLY : zv, ntyp => nsp, nat, ityp, atm, tau
@@ -421,9 +420,9 @@ SUBROUTINE init_wg_corr_large
   CHARACTER (LEN=25) :: title
   INTEGER :: plot_num=0, iflag=+1
 
-  CALL plot_io (filplot, title, dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, dfftp%nr1, dfftp%nr2, &
-     dfftp%nr3, nat, ntyp, ibrav, celldm, at, gcutm, dual, ecutwfc, plot_num, atm, &
-     ityp, zv, tau, plot, iflag)
+  CALL plot_io (filplot, title, dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
+     dfftp%nr1, dfftp%nr2, dfftp%nr3, nat, ntyp, ibrav, celldm, at, &
+     gcutm, dual, ecutwfc, plot_num, atm, ityp, zv, tau, plot, iflag)
   RETURN
   END SUBROUTINE write_wg_on_file_large
 !----------------------------------------------------------------------------

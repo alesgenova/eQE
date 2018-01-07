@@ -1203,26 +1203,28 @@ module saop
   
   implicit none
 
+  integer :: v_rho_saop
+
   public v_rho_saop
 
-contains
-  ! Initial driver to calculate sigma grad rho and whatnot
-  subroutine v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v, cell, nspin, v_pbe, v_lb) !dfftp, nspin, nl, nlm, ngm, g, gg, omega, alat, tpiba)
+! contains
+!   ! Initial driver to calculate sigma grad rho and whatnot
+!   subroutine v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v, cell, nspin, v_pbe, v_lb) !dfftp, nspin, nl, nlm, ngm, g, gg, omega, alat, tpiba)
 
-    implicit none
-    TYPE(scf_type), INTENT(INout) :: rho
-  !  TYPE(fft_type_descriptor), INTENT(IN) :: dfftp
-  !  integer, intent(in) :: ngm
-    type(simulation_cell), intent(in) :: cell
-    integer, intent(in) :: nspin
-    REAL(DP),    INTENT(IN)    :: rho_core(cell%dfftp%nnr)
-    COMPLEX(DP), INTENT(IN)    :: rhog_core(cell%ngm)
-    REAL(DP),    INTENT(INOUT) :: v(cell%dfftp%nnr,nspin)
-    REAL(DP),    INTENT(INOUT) :: vtxc, etxc
-    REAL(DP), optional,    INTENT(INOUT) :: v_pbe(cell%dfftp%nnr,nspin)
-    REAL(DP), optional,    INTENT(INOUT) :: v_lb(cell%dfftp%nnr,nspin)
+!     implicit none
+!     TYPE(scf_type), INTENT(INout) :: rho
+!   !  TYPE(fft_type_descriptor), INTENT(IN) :: dfftp
+!   !  integer, intent(in) :: ngm
+!     type(simulation_cell), intent(in) :: cell
+!     integer, intent(in) :: nspin
+!     REAL(DP),    INTENT(IN)    :: rho_core(cell%dfftp%nnr)
+!     COMPLEX(DP), INTENT(IN)    :: rhog_core(cell%ngm)
+!     REAL(DP),    INTENT(INOUT) :: v(cell%dfftp%nnr,nspin)
+!     REAL(DP),    INTENT(INOUT) :: vtxc, etxc
+!     REAL(DP), optional,    INTENT(INOUT) :: v_pbe(cell%dfftp%nnr,nspin)
+!     REAL(DP), optional,    INTENT(INOUT) :: v_lb(cell%dfftp%nnr,nspin)
 
-    return
-  end subroutine v_rho_saop
+!     return
+!   end subroutine v_rho_saop
 end module saop
 #endif
