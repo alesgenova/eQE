@@ -282,7 +282,7 @@ SUBROUTINE init_wg_corr_large
   USE fft_base,      ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : fwfft, invfft
   USE control_flags, ONLY : gamma_only_ => gamma_only
-  USE gvecl,         ONLY : ngm, gg, gstart_ => gstart, nl, nlm, ecutrho
+  USE gvecl,         ONLY : ngm, gg, gstart_ => gstart, ecutrho
   USE large_cell_base,     ONLY : at, alat, tpiba2, omega
 
   INTEGER :: idx, ir, i,j,k, j0, k0, ig, nt

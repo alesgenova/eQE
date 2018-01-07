@@ -145,8 +145,6 @@ SUBROUTINE gen_simulation_cells()
                     ngmx, &
                     ecutrho, &
                     gcutm, &
-                    nl, &
-                    nlm, &
                     gstart, &
                     gg, &
                     gl, &
@@ -165,8 +163,6 @@ SUBROUTINE gen_simulation_cells()
                     l_ngmx => ngmx, &
                     l_ecutrho => ecutrho, &
                     l_gcutm => gcutm, &
-                    l_nl => nl, &
-                    l_nlm => nlm, &
                     l_gstart => gstart, &
                     l_gg => gg, &
                     l_gl => gl, &
@@ -188,7 +184,7 @@ SUBROUTINE gen_simulation_cells()
            ngm=ngm, ngm_g=ngm_g, ngl=ngl, ngmx=ngmx, &
            ecutrho=ecutrho, gcutm=gcutm, &
            strf=strf, strf_fde=strf_fde, &
-           dfftp=dfftp, nl=nl, nlm=nlm, gstart=gstart, &
+           dfftp=dfftp, nl=dfftp%nl, nlm=dfftp%nlm, gstart=gstart, &
            gg=gg, gl=gl, g=g, igtongl=igtongl, mill=mill, &
            ig_l2g=ig_l2g, sortedig_l2g=sortedig_l2g, mill_g=mill_g, &
            eigts1=eigts1, eigts2=eigts2, eigts3=eigts3, &
@@ -202,7 +198,7 @@ SUBROUTINE gen_simulation_cells()
            ngm=l_ngm, ngm_g=l_ngm_g, ngl=l_ngl, ngmx=l_ngmx, &
            ecutrho=l_ecutrho, gcutm=l_gcutm, &
            strf=strf_large, strf_fde=strf_fde_large, &
-           dfftp=dfftl, nl=l_nl, nlm=l_nlm, gstart=l_gstart, &
+           dfftp=dfftl, nl=dfftl%nl, nlm=dfftl%nlm, gstart=l_gstart, &
            gg=l_gg, gl=l_gl, g=l_g, igtongl=l_igtongl, mill=l_mill, &
            ig_l2g=l_ig_l2g, sortedig_l2g=l_sortedig_l2g, mill_g=l_mill_g, &
            eigts1=l_eigts1, eigts2=l_eigts2, eigts3=l_eigts3, &
@@ -359,8 +355,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
   use fft_base,                 only : dfftp
   use fft_base,                 only : dfftl
   USE fft_interfaces,           ONLY : fwfft, invfft
-  use gvect,                    only : gcutm, gg, g, nl
-  use gvecl,                    only : gcutml => gcutm, ggl =>gg, gl => g, nll => nl
+  use gvect,                    only : gcutm, gg, g
+  use gvecl,                    only : gcutml => gcutm, ggl =>gg, gl => g
   !use gvect,                    only : ngm, gcutm, gg, g, nl
   !use gvecl,                    only : ngml => ngm, gcutml => gcutm, ggl =>gg, gl => g, nll => nl
   use input_parameters,         only : fde_xc_funct,fde_kin_funct
@@ -1286,7 +1282,7 @@ SUBROUTINE fde_kin_gp_lda(rho, rho_core, rhog_core, ene, v)
   use mp,                       only : mp_sum, mp_max
   use mp_global,                only : intra_pool_comm, intra_bgrp_comm
   use cell_base,                only : at, alat, tpiba, tpiba2, omega
-  use gvect,                    only : ngm, nl, g, gg, gstart
+  use gvect,                    only : ngm, g, gg, gstart
   use spin_orb,                 only : domag
   use input_parameters,         only : fde_kin_funct
   use fde,                      only : fde_r0, fde_gp_rhot, fde_gp_alpha, &
@@ -1553,12 +1549,10 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
   !
   use constants,                only : fpi, e2
   use kinds,                    only : dp
-  use fft_base,                 only : dfftp, dffts, dfftl, grid_gather, grid_scatter, &
-                                       grid_gather_large
+  use fft_base,                 only : dfftp, dffts, dfftl
   use fft_interfaces,           only : fwfft, invfft
-  use gvect,                    only : nl, nlm, ngm, gg, gstart
-  use gvecl,                    only : nll => nl, ngml => ngm
-  use gvecs,                    only : nls
+  use gvect,                    only : ngm, gg, gstart
+  use gvecl,                    only : ngml => ngm
   use lsda_mod,                 only : nspin
   use cell_base,                only : omega, tpiba2
   use control_flags,            only : gamma_only, iverbosity
@@ -1669,7 +1663,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
                                rho_fde_large%of_r(:,2), &
                                0.d0, kind=dp )
              call fwfft ('Custom', gauxl, dfftl)
-             tmp_gauxl(1:ngml) = gauxl(nll(1:ngml))
+             tmp_gauxl(1:ngml) = gauxl(dfftl%nl(1:ngml))
              call fde_fake_nspin( .true. , 1 )
              call v_h_large( tmp_gauxl, esi, charge, auxl_fde )
              call fde_fake_nspin( .false. )
@@ -1692,7 +1686,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
            if (iverbosity>-1) write(stdout,*) 'WARNING: SI correction only available single k-point calculations at the moment'
            allocate(mgaux(dffts%nnr))
            myband = NINT(nelec/2.0d0)
-           mgaux(nls(1:npw)) = evc(1:npw,myband)
+           mgaux(dffts%nl(1:npw)) = evc(1:npw,myband)
            call invfft ( 'Wave', mgaux(:), dffts )
            mgaux(1:dffts%nnr) = CONJG(mgaux(1:dffts%nnr)) * mgaux(1:dffts%nnr)
            mgaux(:) = mgaux(:)*wg(myband,1)/omega/2.0d0
@@ -1705,7 +1699,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
            call fwfft('Dense', gaux, dfftp)
         endif
 
-        tmp_gaux(1:ngm) = gaux(nl(1:ngm))
+        tmp_gaux(1:ngm) = gaux(dfftp%nl(1:ngm))
 
         call fde_fake_nspin( .true. , 1 )
         call v_h(tmp_gaux, ehart, charge, v_si)
@@ -1801,10 +1795,9 @@ SUBROUTINE update_rho_fde (density, total)
   use scf,                      only : scf_type, scf_type_copy
   use io_global,                only : stdout, ionode, ionode_id
   use fft_interfaces,           only : fwfft, invfft
-  use fft_base,                 only : dfftp, grid_gather, grid_scatter, &
-                                       dfftl, grid_gather_large, grid_scatter_large
-  use gvect ,                   only : ngm , nl
-  use gvecl ,                   only : ngml => ngm , nll => nl
+  use fft_base,                 only : dfftp, dfftl
+  use gvect ,                   only : ngm
+  use gvecl ,                   only : ngml => ngm
   use lsda_mod,                 only : nspin
   use control_flags,            only : iverbosity
   use command_line_options,    only : fancy_parallel_
@@ -1851,20 +1844,21 @@ SUBROUTINE update_rho_fde (density, total)
 
              gauxl(:) = cmplx(rho_fde_large%of_r(:,is), 0.d0, kind=dp)
              call fwfft ('Custom', gauxl, dfftl)
-             rho_fde_large%of_g(1:ngml,is) = gauxl(nll(1:ngml))
+             rho_fde_large%of_g(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
              !
              if (.not. fde_dotsonlarge .or. fde_overlap) then
                call grid_scatter(raux, rho_fde%of_r(:,is))
                gaux(:) = cmplx(rho_fde%of_r(:,is), 0.d0, kind=dp)
                call fwfft ('Dense', gaux, dfftp)
-               rho_fde%of_g(1:ngm,is) = gaux(nl(1:ngm))
+               rho_fde%of_g(1:ngm,is) = gaux(dfftp%nl(1:ngm))
              endif
              !
            else
              !
-             if (ionode) call mp_sum(raux, inter_fragment_comm)
-             call grid_scatter(raux, rho_fde%of_r(:,is))
-             call c_grid_gather_sum_scatter(rho_fde%of_g(:,is))
+             ! it's now always interlock!
+             !if (ionode) call mp_sum(raux, inter_fragment_comm)
+             !call grid_scatter(raux, rho_fde%of_r(:,is))
+             !call c_grid_gather_sum_scatter(rho_fde%of_g(:,is))
            endif
            !
         end do
@@ -1897,7 +1891,7 @@ SUBROUTINE update_rho_fde (density, total)
         do is=1,fde_nspin
            gauxl(:)=cmplx(rho_fde_large%of_r(:,is),0.d0,kind=dp)
            call fwfft('Custom',gauxl,dfftl)
-           rho_fde_large%of_g(1:ngml,is)=gauxl(nll(1:ngml))
+           rho_fde_large%of_g(1:ngml,is)=gauxl(dfftl%nl(1:ngml))
         enddo
         deallocate(rho_old_large,density_large,gauxl)
         else ! linterlock
@@ -2053,14 +2047,14 @@ SUBROUTINE fde_plot_electrostatics
   !----------------------------------------------------------------------------
   !
   !  Plot v_bare + v_h on the large cell, useful to get the vacuum level for work function evaluation   !
-  USE fft_base,                 ONLY : dfftp, grid_gather, dfftl, grid_gather_large
+  USE fft_base,                 ONLY : dfftp, dfftl
   USE cell_base,                ONLY : celldm, at, ibrav
   USE large_cell_base,          ONLY : celldml => celldm, atl => at
   USE ions_base,                ONLY : ntyp => nsp, atm, zv
   USE gvect,                    ONLY : gcutm
   use gvecl,                    only : gcutml => gcutm
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode, stdout
   USE io_files,                 ONLY : prefix
   USE fde
@@ -2116,14 +2110,14 @@ SUBROUTINE fde_plot_density
   !
   !  Plot FDE total density and potential
   !
-  USE fft_base,                 ONLY : dfftp, grid_gather, dfftl, grid_gather_large
+  USE fft_base,                 ONLY : dfftp, dfftl
   USE cell_base,                ONLY : celldm, at, ibrav
   USE large_cell_base,          ONLY : celldml => celldm, atl => at
   USE ions_base,                ONLY : ntyp => nsp, atm, zv, tau, ityp, nat
   USE gvect,                    ONLY : gcutm
   use gvecl,                    only : gcutml => gcutm
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode, stdout
   USE io_files,                 ONLY : prefix
   USE fde
@@ -2278,21 +2272,19 @@ SUBROUTINE fde_plot_embedpot
   !
   !  Plot FDE total density and potential
   !
-  USE fft_base,                 ONLY : dfftp, dfftl, &
-                                       grid_gather, grid_gather_large, &
-                                       grid_scatter, grid_scatter_large
+  USE fft_base,                 ONLY : dfftp, dfftl
   USE fft_interfaces,           ONLY : fwfft
   USE cell_base,                ONLY : celldm, at, ibrav
   USE large_cell_base,          ONLY : atl => at, bgl => bg
   USE ions_base,                ONLY : ntyp => nsp, atm, zv, ityp, tau, nat
   USE gvect,                    ONLY : gcutm, ngm
-  use gvecl,                    only : ngml => ngm, gcutml => gcutm, ggl =>gg, gl => g, nll => nl, &
+  use gvecl,                    only : ngml => ngm, gcutml => gcutm, ggl =>gg, gl => g, &
                                        eigts1l => eigts1, &
                                        eigts2l => eigts2, &
                                        eigts3l => eigts3
 
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode, ionode_id
   USE io_files,                 ONLY : prefix
   USE mp,                       ONLY : mp_bcast
@@ -2382,7 +2374,7 @@ SUBROUTINE fde_plot_embedpot
           environ_rhor(:,is) = rho_fde_large%of_r(:,is) - auxl(:,is)
           gauxl(:) = cmplx(environ_rhor(:,is), 0.d0, kind=dp)
           call fwfft ('Custom', gauxl, dfftl)
-          environ_rhog(1:ngml,is) = gauxl(nll(1:ngml))
+          environ_rhog(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
        enddo
 
        auxl(:,:) = 0.d0
@@ -2474,17 +2466,15 @@ SUBROUTINE fde_plot_gradrho
   !  Plot the gradient of the electron density (both frag and total) so that we can calculate the embedding potentials
   !  with other programs. Only closed shell case implemented for now.
   !
-  USE fft_base,                 ONLY : dfftp, dfftl, &
-                                       grid_gather, grid_gather_large, &
-                                       grid_scatter, grid_scatter_large
+  USE fft_base,                 ONLY : dfftp, dfftl
   USE fft_interfaces,           ONLY : fwfft
   USE cell_base,                ONLY : celldm, at, ibrav
   USE large_cell_base,          ONLY : atl => at, bgl => bg
   USE ions_base,                ONLY : ntyp => nsp, atm, zv, ityp, tau, nat
-  USE gvect,                    ONLY : gcutm, ngm, g, nl
-  USE gvecl,                    ONLY : ngm_l => ngm, g_l => g, nl_l => nl
+  USE gvect,                    ONLY : gcutm, ngm, g
+  USE gvecl,                    ONLY : ngm_l => ngm, g_l => g
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode, ionode_id
   USE io_files,                 ONLY : prefix
   USE mp,                       ONLY : mp_bcast
@@ -2535,7 +2525,7 @@ SUBROUTINE fde_plot_gradrho
 
       grho = 0.d0
 
-      call gradrho( dfftp%nnr, rho%of_g(:,1), ngm, g, nl, grho )
+      call gradrho( dfftp%nnr, rho%of_g(:,1), ngm, g, dfftp%nl, grho )
 
       do ipol = 1, 3
         if ( ipol == 1 ) then
@@ -2565,7 +2555,7 @@ SUBROUTINE fde_plot_gradrho
   if (linterlock) then
      allocate( grho_large(3,dfftl%nnr) )
      grho_large = 0.d0
-     call gradrho_large( dfftl%nnr, rho_fde_large%of_g(:,1), ngm_l, g_l, nl_l, grho_large )
+     call gradrho_large( dfftl%nnr, rho_fde_large%of_g(:,1), ngm_l, g_l, dfftl%nl, grho_large )
      if (ionode) allocate(rauxl(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x))
      do ipol = 1, 3
         if ( ipol == 1 ) then
@@ -2594,7 +2584,7 @@ SUBROUTINE fde_plot_gradrho
       if ( currfrag == frag_to_plot ) then
           grho = 0.d0
 
-          call gradrho( dfftp%nnr, rho_fde%of_g(:,1), ngm, g, nl, grho )
+          call gradrho( dfftp%nnr, rho_fde%of_g(:,1), ngm, g, dfftp%nl, grho )
 
           do ipol = 1, 3
             if ( ipol == 1 ) then
@@ -2640,12 +2630,12 @@ SUBROUTINE fde_plot_allpot
   !
   !  Plot FDE total density and potential
   !
-  USE fft_base,                 ONLY : dfftp, grid_gather
+  USE fft_base,                 ONLY : dfftp
   USE cell_base,                ONLY : celldm, at, ibrav
   USE ions_base,                ONLY : ntyp => nsp, atm, zv
-  USE gvect,                    ONLY : gcutm, ngm, g, nl
+  USE gvect,                    ONLY : gcutm, ngm, g
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode, stdout
   USE io_files,                 ONLY : prefix
   USE mp_images,                ONLY : my_image_id
@@ -2812,12 +2802,12 @@ SUBROUTINE plot_dense( invec, label )
   !  Plot FDE total density and potential
   !
   use kinds, only : dp
-  USE fft_base,                 ONLY : dfftp, grid_gather
+  USE fft_base,                 ONLY : dfftp
   USE cell_base,                ONLY : celldm, at, ibrav
   USE ions_base,                ONLY : ntyp => nsp, atm, zv, tau, ityp, nat
   USE gvect,                    ONLY : gcutm, ngm
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode
   USE io_files,                 ONLY : prefix
   USE mp_global,                ONLY : my_image_id
@@ -2856,12 +2846,12 @@ SUBROUTINE plot_large( invec, label )
   !  Plot FDE total density and potential
   !
   use kinds, only : dp
-  USE fft_base,                 ONLY : dfftp => dfftl, grid_gather_large
+  USE fft_base,                 ONLY : dfftp => dfftl
   USE large_cell_base,                ONLY : celldm, at, ibrav
   USE ions_base,                ONLY : ntyp => nsp, atm, zv
   USE gvecl,                    ONLY : gcutm, ngm
   USE gvecs,                    ONLY : dual
-  USE wvfct,                    ONLY : ecutwfc
+  USE gvecw,                    ONLY : ecutwfc
   USE io_global,                ONLY : ionode
   USE io_files,                 ONLY : prefix
   USE mp_global,                ONLY : my_image_id
@@ -2969,7 +2959,7 @@ SUBROUTINE setlocal_fde(pot, strf)
   USE vlocal,    ONLY : vloc !, strf
   USE fft_base,  ONLY : dfftp
   USE fft_interfaces,ONLY : invfft
-  USE gvect,     ONLY : nl, nlm, ngm
+  USE gvect,     ONLY : ngm
   USE control_flags, ONLY : gamma_only
 !  USE mp_bands,  ONLY : intra_bgrp_comm
 !  USE mp_pools,  ONLY : intra_pool_comm
@@ -2998,18 +2988,18 @@ SUBROUTINE setlocal_fde(pot, strf)
   IF (do_comp_mt) THEN
       ALLOCATE(v_corr(ngm))
       CALL wg_corr_loc(omega,ntyp,ngm,zv,strf,v_corr)
-      aux(nl(:)) = v_corr(:)
+      aux(dfftp%nl(:)) = v_corr(:)
       DEALLOCATE(v_corr)
   END IF
   !
   do nt = 1, ntyp
      do ng = 1, ngm
-        aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
+        aux (dfftp%nl(ng))=aux(dfftp%nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
      enddo
   enddo
   IF (gamma_only) THEN
       DO ng = 1, ngm
-          aux (nlm(ng)) = CONJG(aux (nl(ng)))
+          aux (dfftp%nlm(ng)) = CONJG(aux (dfftp%nl(ng)))
       END DO
   END IF
   !
@@ -3085,9 +3075,9 @@ SUBROUTINE setlocal_fde_large(pot, strf)
   USE gvecl,     ONLY : igtongl, gg
 !  USE scf,       ONLY : rho, v_of_0, vltot
   USE vlocal_large,    ONLY : vloc => vloc_large !, strf
-  USE fft_base,  ONLY : dfftl
+  USE fft_base,  ONLY : dfftl, dfftp => dfftl
   USE fft_interfaces,ONLY : invfft
-  USE gvecl,     ONLY : nl, nlm, ngm
+  USE gvecl,     ONLY : ngm
   USE control_flags, ONLY : gamma_only
 !  USE mp_bands,  ONLY : intra_bgrp_comm
 !  USE mp_pools,  ONLY : intra_pool_comm
@@ -3116,18 +3106,18 @@ SUBROUTINE setlocal_fde_large(pot, strf)
   IF (do_comp_mt) THEN
       ALLOCATE(v_corr(ngm))
       CALL wg_corr_loc(omega,ntyp,ngm,zv,strf,v_corr)
-      aux(nl(:)) = v_corr(:)
+      aux(dfftp%nl(:)) = v_corr(:)
       DEALLOCATE(v_corr)
   END IF
   !
   do nt = 1, ntyp
      do ng = 1, ngm
-        aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
+        aux (dfftp%nl(ng))=aux(dfftp%nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
      enddo
   enddo
   IF (gamma_only) THEN
       DO ng = 1, ngm
-          aux (nlm(ng)) = CONJG(aux (nl(ng)))
+          aux (dfftp%nlm(ng)) = CONJG(aux (dfftp%nl(ng)))
       END DO
   END IF
   !
@@ -3200,332 +3190,332 @@ real(DP) :: alpha
 END SUBROUTINE calc_frag_beta
 
 
-SUBROUTINE PartitionWeight(RegulRho, RegulRhoG, unitary)
-  !-----------------------------------------------------------------------
-  !
-  ! ADAPTED FROM TDDFT/molecular_operators
-  !
-  !
-  !  This routine will construct a sum of atomic densities
-  !  which properly decays exponentially away from the
-  !  nuclei.
-  !
-  !
-  !
-  !
-  USE kinds,        ONLY : dp
-  USE mp_global,    ONLY : me_pool, intra_bgrp_comm
-  USE mp,           ONLY : mp_sum
-  USE fft_base,     ONLY : dfftp, dffts
-  USE ions_base,    ONLY : ityp, zv, tau, nat
-  USE cell_base,    ONLY : at, bg, alat, omega, tpiba2
-  USE constants,    ONLY : bohr_radius_angs, tpi, tpi2
-  USE fde,          ONLY : tau_fde !, currfrag
-  USE gvect,        ONLY : ngm, nl, g, gg, gstart
-
-  implicit none
-
-  real(dp), intent(out) :: RegulRho(dfftp%nnr) ! the partition function
-  complex(dp), intent(out) :: RegulRhoG(ngm) ! the partition function
-  logical, intent(in)   :: unitary
-
-  real(dp) :: wg(dfftp%nnr,nat) ! the partition function
-  real(dp) :: wgsum(nat), wgt
-  real(dp) :: alpha_exp, dist, domega, distx, disty, distz
-  real(dp) :: r(3)
-  real(dp) :: inv_nr1, inv_nr2, inv_nr3
-  real(dp) :: inv_nr1s, inv_nr2s, inv_nr3s
-  complex(dp) :: factor, imag
-  integer :: ia, i, j, k, index, index0, ir, ipol
-!  integer :: iu
-!  iu = 100+currfrag
-
-  inv_nr1 = 1.d0 / real(dfftp%nr1,dp)
-  inv_nr2 = 1.d0 / real(dfftp%nr2,dp)
-  inv_nr3 = 1.d0 / real(dfftp%nr3,dp)
-
-  index0 = 0
-#ifdef __MPI
-  do i = 1, me_pool
-    index0 = index0 + dfftp%nr1x*dfftp%nr2x*dfftp%npp(i)
-  enddo
-#endif
-
-  RegulRho(:)   = 0.0d0
-  wg(:,:)  = 0.0d0
-  wgsum(:) = 0.0d0
-
-  domega = omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
-
-  ! loop over real space grid
-
-!$omp parallel do
-  do ir = 1, dfftp%nnr
-    index = index0 + ir - 1
-    k     = index / (dfftp%nr1x*dfftp%nr2x)
-    index = index - (dfftp%nr1x*dfftp%nr2x)*k
-    j     = index / dfftp%nr1x
-    index = index - dfftp%nr1x*j
-    i     = index
-
-    do ipol = 1, 3
-      r(ipol) = real(i,dp)*inv_nr1*at(ipol,1) + &
-                real(j,dp)*inv_nr2*at(ipol,2) + &
-                real(k,dp)*inv_nr3*at(ipol,3)
-    enddo
-
-    ! minimum image convention
-    call cryst_to_cart( 1, r, bg, -1 )
-    r = r - anint(r)
-    call cryst_to_cart( 1, r, at, 1 )
-
-!  This is the density of the carbon atom
-!  but is made to integrate to the nuber
-!  of electrons of the given atom.
-!  If "unitary" the density is let integrate to 1
-
-
-     do ia = 1, nat
-      distx = r(1)-tau(1,ia)
-      distx = distx - anint(distx)
-      disty = r(2)-tau(2,ia)
-      disty = disty - anint(disty)
-      distz = r(3)-tau(3,ia)
-      distz = distz - anint(distz)
-      dist  = SQRT( distx*distx + disty*disty + distz*distz )
-
-      dist = dist * alat ! now dist is in Bohrs
-      alpha_exp = 3.5d0 ! effective decay for carbon's density
-      wg(ir,ia) = dist*dist*exp(-alpha_exp*dist)
-      wgsum(ia) = wgsum(ia) + wg(ir,ia) * domega
-     enddo
-  enddo
-!$omp end parallel do
-
- ! is this right?
- ! call mp_sum( wgsum, intra_bgrp_comm )
-
-  do ia = 1, nat
-   if (unitary) then
-     wg(:,ia) = wg(:,ia) / wgsum(ia)
-   else
-     wg(:,ia) = zv(ityp(ia)) * wg(:,ia) / wgsum(ia)
-   endif
-   RegulRho(:) = RegulRho(:) + wg(:,ia)
-  enddo
-
-if (.not.unitary) then
- imag=(0.0d0,1.0d0)
- do ia = 1, nat
-  do ir = 1,ngm
-
-   factor = exp( -tpi*imag* &
-            ( g(1,ir)*tau(1,ia) + &
-              g(2,ir)*tau(2,ia) + &
-              g(3,ir)*tau(3,ia) ) )
-
-   RegulRhoG(ir) = factor * zv(ityp(ia))/wgsum(ia) * 4.0d0*alpha_exp / &
-                   (alpha_exp*alpha_exp-tpi2*gg(ir)*tpiba2)**2.0d0
-  enddo
- enddo
-endif
-!
-END SUBROUTINE PartitionWeight
-
-
-SUBROUTINE GlueRegRhoToRho(rho,RegularDensity,RegularDensityG)
-  USE kinds,        ONLY : dp
-  USE gvect,        ONLY : ngm, gg, gcutm
-  USE fft_base,     ONLY : dfftp
-  USE scf,          ONLY : scf_type
-  USE lsda_mod,     ONLY : nspin
-  USE spin_orb,     ONLY : domag
-  USE fde,          ONLY : currfrag
-
-
-  implicit none
-
-  type(scf_type), intent(inout)  :: rho
-
-  real(dp),    intent(in) :: RegularDensity(dfftp%nnr) ! regrho in real space
-  complex(dp), intent(in) :: RegularDensityG(ngm)      ! regrho in G space
-
-  integer  :: nspin0, ipnt, ispin
-  real(dp) :: fac
-
-  real(dp) :: thr_rho=1.0d-5 , thr_rhog=0.95d0 ! to be set at input?
-
-  ! TODO: non-collinear
-  nspin0 = nspin
-  if (nspin == 4) nspin0 = 1
-  if (nspin==4 .and. domag) nspin0 = 2
-
-  fac = 1.d0 / dble(nspin0)
-
- ! regularize rho
-  do ispin = 1, nspin0
-   do ipnt=1,dfftp%nnr
-   if (abs(rho%of_r(ipnt,ispin)) < thr_rho) then
-     rho%of_r(ipnt,ispin) = fac * RegularDensity(ipnt)
-    endif
-   enddo
-     do ipnt=1,ngm
-      if (gg(ipnt)>gcutm*thr_rhog) then
-       rho%of_g(ipnt,1) = RegularDensityG(ipnt)*fac
-      endif
-     enddo
-  enddo
-
-  ! RegularDensity(1:ngm) = 0.0d0
-  ! RegularDensity(1:dfftp%nnr) = rho%of_r(1:dfftp%nnr,1)
-  ! trash = 0.0d0
-  ! trash = SUM(RegularDensity(1:dfftp%nnr))*omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
-  ! write(100,*) 'CHARGE_FROM_REGRHO=',trash
-
-END SUBROUTINE GlueRegRhoToRho
-
-
-
-SUBROUTINE GradRegularRho(RegularRho, grad, is_fde)
-  !-----------------------------------------------------------------------
-  !
-  !  This routine will construct the derivative of
-  !  a sum of atomic densities
-  !  which properly decays exponentially away from the
-  !  nuclei.
-  !
-  !
-  !
-  !
-  USE kinds,        ONLY : dp
-  USE mp_global,    ONLY : me_pool, intra_bgrp_comm
-  USE mp,           ONLY : mp_sum
-  USE fft_base,     ONLY : dfftp
-  USE ions_base,    ONLY : ityp, zv, tau, nat
-  USE cell_base,    ONLY : at, bg, alat, omega
-  USE constants,    ONLY : bohr_radius_angs, tpi, tpi2
-  USE fde,          only : currfrag, tau_fde, nat_fde
-
-  implicit none
-
-  logical , intent(in)  :: is_fde
-  real(dp), intent(in)  :: RegularRho(dfftp%nnr) ! the partition function
-  real(dp), intent(out) :: grad(3,dfftp%nnr) ! the partition function
-
-  real(dp), allocatable :: tau_tmp(:,:)
-  real(dp), allocatable :: wg(:,:), gwg(:,:,:)
-  real(dp), allocatable :: wgsum(:)
-  real(dp) :: alpha_exp, dist, domega, distx, disty, distz, wgt
-  real(dp) :: r(3)
-  real(dp) :: inv_nr1, inv_nr2, inv_nr3
-  real(dp) :: inv_nr1s, inv_nr2s, inv_nr3s
-  integer :: ia, i, j, k, index, index0, ir, ipol
-  integer :: iu, nat_tmp
-
-
-  iu = 100+currfrag
-
- if (is_fde) then
-  allocate(tau_tmp(3,nat_fde))
-  tau_tmp(1:3,1:nat_fde) = tau_fde(1:3,1:nat_fde)
-  nat_tmp = nat_fde
- else
-  allocate(tau_tmp(3,nat))
-  tau_tmp(1:3,1:nat) = tau(1:3,1:nat)
-  nat_tmp = nat
- endif
-
- allocate (wg(dfftp%nnr,nat_tmp),gwg(3,dfftp%nnr,nat_tmp),wgsum(nat_tmp))
-
-
-
-  inv_nr1 = 1.d0 / real(dfftp%nr1,dp)
-  inv_nr2 = 1.d0 / real(dfftp%nr2,dp)
-  inv_nr3 = 1.d0 / real(dfftp%nr3,dp)
-
-  index0 = 0
-#ifdef __MPI
-  do i = 1, me_pool
-    index0 = index0 + dfftp%nr1x*dfftp%nr2x*dfftp%npp(i)
-  enddo
-#endif
-
-  wg(:,:)  = 0.0d0
-  wgsum(:) = 0.0d0
-
-  domega = omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
-
-  ! loop over real space grid
-
-!$omp parallel do
-  do ir = 1, dfftp%nnr
-    index = index0 + ir - 1
-    k     = index / (dfftp%nr1x*dfftp%nr2x)
-    index = index - (dfftp%nr1x*dfftp%nr2x)*k
-    j     = index / dfftp%nr1x
-    index = index - dfftp%nr1x*j
-    i     = index
-
-    do ipol = 1, 3
-      r(ipol) = real(i,dp)*inv_nr1*at(ipol,1) + &
-                real(j,dp)*inv_nr2*at(ipol,2) + &
-                real(k,dp)*inv_nr3*at(ipol,3)
-    enddo
-
-    ! minimum image convention
-    call cryst_to_cart( 1, r, bg, -1 )
-    r = r - anint(r)
-    call cryst_to_cart( 1, r, at, 1 )
-
-!  This is the density of the carbon atom
-!  but is made to integrate to the nuber
-!  of electrons of the given atom.
-!  If "unitary" the density is let integrate to 1
-
-
-     do ia = 1, nat_tmp
-      distx = r(1)-tau_tmp(1,ia)
-      distx = distx - anint(distx)
-      disty = r(2)-tau_tmp(2,ia)
-      disty = disty - anint(disty)
-      distz = r(3)-tau_tmp(3,ia)
-      distz = distz - anint(distz)
-      dist  = SQRT( distx*distx + disty*disty + distz*distz )
-
-      dist = dist * alat ! now dist is in Bohrs
-      alpha_exp = 3.5d0 ! effective decay for carbon's density
-
-      wg(ir,ia) = dist*dist*exp(-alpha_exp*dist)
-
-      gwg(1,ir,ia) = alat*distx*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
-      gwg(2,ir,ia) = alat*disty*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
-      gwg(3,ir,ia) = alat*distz*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
-
-      wgsum(ia) = wgsum(ia) + wg(ir,ia) * domega
-     enddo
-  enddo
-!$omp end parallel do
-
-  do ia = 1, nat_tmp
-   gwg(:,:,ia) = zv(ityp(ia)) * gwg(:,:,ia) / wgsum(ia)
-  enddo
-
-!$omp parallel do
-  do ir=1,dfftp%nnr
-   !write(iu,*) 'Rho,Grad,RegGrad', RegularRho(ir), grad(1,ir), sum(gwg(1,ir,:))
-   if (RegularRho(ir) < 1.0d-3) then
-      grad(1,ir) = sum(gwg(1,ir,:))
-      grad(2,ir) = sum(gwg(2,ir,:))
-      grad(3,ir) = sum(gwg(3,ir,:))
-   endif
-  enddo
-!$omp end parallel do
-
-
- deallocate (wg,gwg,wgsum)
- deallocate(tau_tmp)
-!
-END SUBROUTINE GradRegularRho
+! SUBROUTINE PartitionWeight(RegulRho, RegulRhoG, unitary)
+!   !-----------------------------------------------------------------------
+!   !
+!   ! ADAPTED FROM TDDFT/molecular_operators
+!   !
+!   !
+!   !  This routine will construct a sum of atomic densities
+!   !  which properly decays exponentially away from the
+!   !  nuclei.
+!   !
+!   !
+!   !
+!   !
+!   USE kinds,        ONLY : dp
+!   USE mp_global,    ONLY : me_pool, intra_bgrp_comm
+!   USE mp,           ONLY : mp_sum
+!   USE fft_base,     ONLY : dfftp, dffts
+!   USE ions_base,    ONLY : ityp, zv, tau, nat
+!   USE cell_base,    ONLY : at, bg, alat, omega, tpiba2
+!   USE constants,    ONLY : bohr_radius_angs, tpi, tpi2
+!   USE fde,          ONLY : tau_fde !, currfrag
+!   USE gvect,        ONLY : g, gg, gstart
+
+!   implicit none
+
+!   real(dp), intent(out) :: RegulRho(dfftp%nnr) ! the partition function
+!   complex(dp), intent(out) :: RegulRhoG(ngm) ! the partition function
+!   logical, intent(in)   :: unitary
+
+!   real(dp) :: wg(dfftp%nnr,nat) ! the partition function
+!   real(dp) :: wgsum(nat), wgt
+!   real(dp) :: alpha_exp, dist, domega, distx, disty, distz
+!   real(dp) :: r(3)
+!   real(dp) :: inv_nr1, inv_nr2, inv_nr3
+!   real(dp) :: inv_nr1s, inv_nr2s, inv_nr3s
+!   complex(dp) :: factor, imag
+!   integer :: ia, i, j, k, index, index0, ir, ipol
+! !  integer :: iu
+! !  iu = 100+currfrag
+
+!   inv_nr1 = 1.d0 / real(dfftp%nr1,dp)
+!   inv_nr2 = 1.d0 / real(dfftp%nr2,dp)
+!   inv_nr3 = 1.d0 / real(dfftp%nr3,dp)
+
+!   index0 = 0
+! #ifdef __MPI
+!   do i = 1, me_pool
+!     index0 = index0 + dfftp%nr1x*dfftp%nr2x*dfftp%npp(i)
+!   enddo
+! #endif
+
+!   RegulRho(:)   = 0.0d0
+!   wg(:,:)  = 0.0d0
+!   wgsum(:) = 0.0d0
+
+!   domega = omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
+
+!   ! loop over real space grid
+
+! !$omp parallel do
+!   do ir = 1, dfftp%nnr
+!     index = index0 + ir - 1
+!     k     = index / (dfftp%nr1x*dfftp%nr2x)
+!     index = index - (dfftp%nr1x*dfftp%nr2x)*k
+!     j     = index / dfftp%nr1x
+!     index = index - dfftp%nr1x*j
+!     i     = index
+
+!     do ipol = 1, 3
+!       r(ipol) = real(i,dp)*inv_nr1*at(ipol,1) + &
+!                 real(j,dp)*inv_nr2*at(ipol,2) + &
+!                 real(k,dp)*inv_nr3*at(ipol,3)
+!     enddo
+
+!     ! minimum image convention
+!     call cryst_to_cart( 1, r, bg, -1 )
+!     r = r - anint(r)
+!     call cryst_to_cart( 1, r, at, 1 )
+
+! !  This is the density of the carbon atom
+! !  but is made to integrate to the nuber
+! !  of electrons of the given atom.
+! !  If "unitary" the density is let integrate to 1
+
+
+!      do ia = 1, nat
+!       distx = r(1)-tau(1,ia)
+!       distx = distx - anint(distx)
+!       disty = r(2)-tau(2,ia)
+!       disty = disty - anint(disty)
+!       distz = r(3)-tau(3,ia)
+!       distz = distz - anint(distz)
+!       dist  = SQRT( distx*distx + disty*disty + distz*distz )
+
+!       dist = dist * alat ! now dist is in Bohrs
+!       alpha_exp = 3.5d0 ! effective decay for carbon's density
+!       wg(ir,ia) = dist*dist*exp(-alpha_exp*dist)
+!       wgsum(ia) = wgsum(ia) + wg(ir,ia) * domega
+!      enddo
+!   enddo
+! !$omp end parallel do
+
+!  ! is this right?
+!  ! call mp_sum( wgsum, intra_bgrp_comm )
+
+!   do ia = 1, nat
+!    if (unitary) then
+!      wg(:,ia) = wg(:,ia) / wgsum(ia)
+!    else
+!      wg(:,ia) = zv(ityp(ia)) * wg(:,ia) / wgsum(ia)
+!    endif
+!    RegulRho(:) = RegulRho(:) + wg(:,ia)
+!   enddo
+
+! if (.not.unitary) then
+!  imag=(0.0d0,1.0d0)
+!  do ia = 1, nat
+!   do ir = 1,ngm
+
+!    factor = exp( -tpi*imag* &
+!             ( g(1,ir)*tau(1,ia) + &
+!               g(2,ir)*tau(2,ia) + &
+!               g(3,ir)*tau(3,ia) ) )
+
+!    RegulRhoG(ir) = factor * zv(ityp(ia))/wgsum(ia) * 4.0d0*alpha_exp / &
+!                    (alpha_exp*alpha_exp-tpi2*gg(ir)*tpiba2)**2.0d0
+!   enddo
+!  enddo
+! endif
+! !
+! END SUBROUTINE PartitionWeight
+
+
+! SUBROUTINE GlueRegRhoToRho(rho,RegularDensity,RegularDensityG)
+!   USE kinds,        ONLY : dp
+!   USE gvect,        ONLY : ngm, gg, gcutm
+!   USE fft_base,     ONLY : dfftp
+!   USE scf,          ONLY : scf_type
+!   USE lsda_mod,     ONLY : nspin
+!   USE spin_orb,     ONLY : domag
+!   USE fde,          ONLY : currfrag
+
+
+!   implicit none
+
+!   type(scf_type), intent(inout)  :: rho
+
+!   real(dp),    intent(in) :: RegularDensity(dfftp%nnr) ! regrho in real space
+!   complex(dp), intent(in) :: RegularDensityG(ngm)      ! regrho in G space
+
+!   integer  :: nspin0, ipnt, ispin
+!   real(dp) :: fac
+
+!   real(dp) :: thr_rho=1.0d-5 , thr_rhog=0.95d0 ! to be set at input?
+
+!   ! TODO: non-collinear
+!   nspin0 = nspin
+!   if (nspin == 4) nspin0 = 1
+!   if (nspin==4 .and. domag) nspin0 = 2
+
+!   fac = 1.d0 / dble(nspin0)
+
+!  ! regularize rho
+!   do ispin = 1, nspin0
+!    do ipnt=1,dfftp%nnr
+!    if (abs(rho%of_r(ipnt,ispin)) < thr_rho) then
+!      rho%of_r(ipnt,ispin) = fac * RegularDensity(ipnt)
+!     endif
+!    enddo
+!      do ipnt=1,ngm
+!       if (gg(ipnt)>gcutm*thr_rhog) then
+!        rho%of_g(ipnt,1) = RegularDensityG(ipnt)*fac
+!       endif
+!      enddo
+!   enddo
+
+!   ! RegularDensity(1:ngm) = 0.0d0
+!   ! RegularDensity(1:dfftp%nnr) = rho%of_r(1:dfftp%nnr,1)
+!   ! trash = 0.0d0
+!   ! trash = SUM(RegularDensity(1:dfftp%nnr))*omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
+!   ! write(100,*) 'CHARGE_FROM_REGRHO=',trash
+
+! END SUBROUTINE GlueRegRhoToRho
+
+
+
+! SUBROUTINE GradRegularRho(RegularRho, grad, is_fde)
+!   !-----------------------------------------------------------------------
+!   !
+!   !  This routine will construct the derivative of
+!   !  a sum of atomic densities
+!   !  which properly decays exponentially away from the
+!   !  nuclei.
+!   !
+!   !
+!   !
+!   !
+!   USE kinds,        ONLY : dp
+!   USE mp_global,    ONLY : me_pool, intra_bgrp_comm
+!   USE mp,           ONLY : mp_sum
+!   USE fft_base,     ONLY : dfftp
+!   USE ions_base,    ONLY : ityp, zv, tau, nat
+!   USE cell_base,    ONLY : at, bg, alat, omega
+!   USE constants,    ONLY : bohr_radius_angs, tpi, tpi2
+!   USE fde,          only : currfrag, tau_fde, nat_fde
+
+!   implicit none
+
+!   logical , intent(in)  :: is_fde
+!   real(dp), intent(in)  :: RegularRho(dfftp%nnr) ! the partition function
+!   real(dp), intent(out) :: grad(3,dfftp%nnr) ! the partition function
+
+!   real(dp), allocatable :: tau_tmp(:,:)
+!   real(dp), allocatable :: wg(:,:), gwg(:,:,:)
+!   real(dp), allocatable :: wgsum(:)
+!   real(dp) :: alpha_exp, dist, domega, distx, disty, distz, wgt
+!   real(dp) :: r(3)
+!   real(dp) :: inv_nr1, inv_nr2, inv_nr3
+!   real(dp) :: inv_nr1s, inv_nr2s, inv_nr3s
+!   integer :: ia, i, j, k, index, index0, ir, ipol
+!   integer :: iu, nat_tmp
+
+
+!   iu = 100+currfrag
+
+!  if (is_fde) then
+!   allocate(tau_tmp(3,nat_fde))
+!   tau_tmp(1:3,1:nat_fde) = tau_fde(1:3,1:nat_fde)
+!   nat_tmp = nat_fde
+!  else
+!   allocate(tau_tmp(3,nat))
+!   tau_tmp(1:3,1:nat) = tau(1:3,1:nat)
+!   nat_tmp = nat
+!  endif
+
+!  allocate (wg(dfftp%nnr,nat_tmp),gwg(3,dfftp%nnr,nat_tmp),wgsum(nat_tmp))
+
+
+
+!   inv_nr1 = 1.d0 / real(dfftp%nr1,dp)
+!   inv_nr2 = 1.d0 / real(dfftp%nr2,dp)
+!   inv_nr3 = 1.d0 / real(dfftp%nr3,dp)
+
+!   index0 = 0
+! #ifdef __MPI
+!   do i = 1, me_pool
+!     index0 = index0 + dfftp%nr1x*dfftp%nr2x*dfftp%npp(i)
+!   enddo
+! #endif
+
+!   wg(:,:)  = 0.0d0
+!   wgsum(:) = 0.0d0
+
+!   domega = omega / dble(dfftp%nr1 * dfftp%nr2 * dfftp%nr3)
+
+!   ! loop over real space grid
+
+! !$omp parallel do
+!   do ir = 1, dfftp%nnr
+!     index = index0 + ir - 1
+!     k     = index / (dfftp%nr1x*dfftp%nr2x)
+!     index = index - (dfftp%nr1x*dfftp%nr2x)*k
+!     j     = index / dfftp%nr1x
+!     index = index - dfftp%nr1x*j
+!     i     = index
+
+!     do ipol = 1, 3
+!       r(ipol) = real(i,dp)*inv_nr1*at(ipol,1) + &
+!                 real(j,dp)*inv_nr2*at(ipol,2) + &
+!                 real(k,dp)*inv_nr3*at(ipol,3)
+!     enddo
+
+!     ! minimum image convention
+!     call cryst_to_cart( 1, r, bg, -1 )
+!     r = r - anint(r)
+!     call cryst_to_cart( 1, r, at, 1 )
+
+! !  This is the density of the carbon atom
+! !  but is made to integrate to the nuber
+! !  of electrons of the given atom.
+! !  If "unitary" the density is let integrate to 1
+
+
+!      do ia = 1, nat_tmp
+!       distx = r(1)-tau_tmp(1,ia)
+!       distx = distx - anint(distx)
+!       disty = r(2)-tau_tmp(2,ia)
+!       disty = disty - anint(disty)
+!       distz = r(3)-tau_tmp(3,ia)
+!       distz = distz - anint(distz)
+!       dist  = SQRT( distx*distx + disty*disty + distz*distz )
+
+!       dist = dist * alat ! now dist is in Bohrs
+!       alpha_exp = 3.5d0 ! effective decay for carbon's density
+
+!       wg(ir,ia) = dist*dist*exp(-alpha_exp*dist)
+
+!       gwg(1,ir,ia) = alat*distx*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
+!       gwg(2,ir,ia) = alat*disty*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
+!       gwg(3,ir,ia) = alat*distz*(2.0d0-alpha_exp*dist)*exp(-alpha_exp*dist)
+
+!       wgsum(ia) = wgsum(ia) + wg(ir,ia) * domega
+!      enddo
+!   enddo
+! !$omp end parallel do
+
+!   do ia = 1, nat_tmp
+!    gwg(:,:,ia) = zv(ityp(ia)) * gwg(:,:,ia) / wgsum(ia)
+!   enddo
+
+! !$omp parallel do
+!   do ir=1,dfftp%nnr
+!    !write(iu,*) 'Rho,Grad,RegGrad', RegularRho(ir), grad(1,ir), sum(gwg(1,ir,:))
+!    if (RegularRho(ir) < 1.0d-3) then
+!       grad(1,ir) = sum(gwg(1,ir,:))
+!       grad(2,ir) = sum(gwg(2,ir,:))
+!       grad(3,ir) = sum(gwg(3,ir,:))
+!    endif
+!   enddo
+! !$omp end parallel do
+
+
+!  deallocate (wg,gwg,wgsum)
+!  deallocate(tau_tmp)
+! !
+! END SUBROUTINE GradRegularRho
 !
 !
 !--------------------------------------------------------------------------------------------------------------
@@ -3798,7 +3788,6 @@ subroutine potential_wall( dfftp, pot )
 !
   use kinds , only : dp
   use io_global, only : stdout, ionode
-  use fft_base, only : grid_scatter
   USE fft_types,  ONLY : fft_type_descriptor
   implicit none
 
@@ -4137,7 +4126,7 @@ subroutine copy_pot_f2l( vf, vl )
 !  This subroutine copies scattered quantities (dens or pot) in frag cell array over to scattered quantities to the supersystem array.
 !
   use kinds, only : dp
-  use fft_base , only: dfftp, dfftl, grid_gather, grid_scatter_large
+  use fft_base , only: dfftp, dfftl
   use fde , only : f2l
   use io_global, only : ionode
   use mp, only: mp_sum
@@ -4179,7 +4168,7 @@ subroutine copy_pot_l2f( vl, vf )
 !  This subroutine copies scattered quantities (dens or pot) in large cell array over to scattered quantities to the fragment array.
 !
   use kinds, only : dp
-  use fft_base , only: dfftp, dfftl, grid_gather_large, grid_scatter
+  use fft_base , only: dfftp, dfftl
   use fde , only : f2l
   use io_global, only : ionode
   use mp, only: mp_bcast

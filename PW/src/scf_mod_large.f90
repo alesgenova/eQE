@@ -30,6 +30,8 @@ MODULE scf_large
   USE extfield,     ONLY : dipfield, emaxpos, eopreg, edir
   USE control_flags,ONLY : lxdm
   !
+  use scf , only : scf_type
+  
   SAVE
 
   !
@@ -43,26 +45,6 @@ MODULE scf_large
 !       1. rho%bec is mixed, while becsum is not
 !       2. for npool > 1 rho%bec is collected, becsum is not
 !          ( this is necessary to make the stress work)
-
-  TYPE scf_type
-     REAL(DP),   ALLOCATABLE :: of_r(:,:)  ! the charge density in R-space
-     COMPLEX(DP),ALLOCATABLE :: of_g(:,:)  ! the charge density in G-space
-     REAL(DP),   ALLOCATABLE :: kin_r(:,:) ! the kinetic energy density in R-space
-     COMPLEX(DP),ALLOCATABLE :: kin_g(:,:) ! the kinetic energy density in G-space
-     REAL(DP),   ALLOCATABLE :: ns(:,:,:,:)! the LDA+U occupation matrix
-     COMPLEX(DP),ALLOCATABLE :: ns_nc(:,:,:,:)!     ---       noncollinear case
-     REAL(DP),   ALLOCATABLE :: bec(:,:,:) ! the PAW hamiltonian elements
-     LOGICAL             :: is_fde
-  END TYPE scf_type
-  !
-  TYPE mix_type
-     COMPLEX(DP), ALLOCATABLE :: of_g(:,:)  ! the charge density in G-space
-     COMPLEX(DP), ALLOCATABLE :: kin_g(:,:) ! the charge density in G-space
-     REAL(DP),    ALLOCATABLE :: ns(:,:,:,:)! the LDA+U occupation matrix 
-     COMPLEX(DP), ALLOCATABLE :: ns_nc(:,:,:,:)!     ---     noncollinear case 
-     REAL(DP),    ALLOCATABLE :: bec(:,:,:) ! PAW corrections to hamiltonian
-     REAL(DP)                 :: el_dipole  ! electrons dipole
-  END TYPE mix_type
 
   type (scf_type) :: rho  ! the charge density and its other components
   type (scf_type) :: v    ! the scf potential

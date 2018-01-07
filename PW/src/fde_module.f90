@@ -25,7 +25,7 @@ MODULE fde
   use kinds,                    only: dp
   use fde_types,                only : simulation_cell
   use scf,                      only: scf_type
-  use scf_large,                only: scf_type_large => scf_type
+  !use scf_large,                only: scf_type_large => scf_type
   use kernel_module,            only: KernelType
 
   implicit none 
@@ -61,7 +61,7 @@ MODULE fde
   type(scf_type) :: rho_fde
   type(scf_type) :: rho_fde_old
   ! the charge density of the full system in the large grid
-  type(scf_type_large) :: rho_fde_large
+  type(scf_type) :: rho_fde_large
   
   ! the valence density of the single fragment at the previous scf step
   type(scf_type) :: rho_old 
