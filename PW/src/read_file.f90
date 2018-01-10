@@ -137,14 +137,14 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE fft_types,            ONLY : fft_type_allocate
   USE recvec_subs,          ONLY : ggen, ggens
   USE gvect,                ONLY : gg, ngm, g, gcutm, mill, ngm_g, ig_l2g, &
-                                   eigts1, eigts2, eigts3, nl, gstart
+                                   eigts1, eigts2, eigts3, gstart
   USE gvecl,                ONLY : gg_l => gg, ngm_l => ngm, g_l => g, gcutm_l => gcutm, &
                                    eigts1_l => eigts1, eigts2_l => eigts2, eigts3_l => eigts3, &
                                    nl_l => nl, gstart_l => gstart, ig_l2g_l=>ig_l2g, &
                                    mill_l => mill
   USE Coul_cut_2D,          ONLY : do_cutoff_2D, cutoff_fact
   USE fft_base,             ONLY : dfftp, dffts
-  USE gvecs,                ONLY : ngms, nls, gcutms 
+  USE gvecs,                ONLY : ngms, gcutms 
   USE spin_orb,             ONLY : lspinorb, domag
   USE scf,                  ONLY : rho, rho_core, rhog_core, v
   USE scf,                  ONLY : vltot
@@ -428,7 +428,7 @@ SUBROUTINE read_xml_file_internal(withbs)
      !
      psic(:) = rho%of_r(:,is)
      CALL fwfft ('Rho', psic, dfftp)
-     rho%of_g(:,is) = psic(nl(:))
+     rho%of_g(:,is) = psic(dfftp%nl(:))
      !
   END DO
   if (do_fde) call update_rho_fde(rho, .true.)
