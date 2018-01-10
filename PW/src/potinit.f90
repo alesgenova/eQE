@@ -267,13 +267,13 @@ SUBROUTINE potinit()
   endif
 
   if (do_fde) then
-    call flush_unit(stdout)
+    flush(stdout)
     call CreateKernel(NonlocalKernel,rho,fde_kin_funct, &
                     fde_gp, fde_gp_rhot, fde_r0, fde_gp_alpha, reduced_cell)
-    call flush_unit(stdout)
+    flush(stdout)
     call CreateKernel(NonlocalKernel_fde,rho_fde_large,fde_kin_funct, &
                     fde_gp, fde_gp_rhot, fde_r0, fde_gp_alpha, native_cell)
-    call flush_unit(stdout)
+    flush(stdout)
   endif
   !
   CALL v_of_rho( rho, rho_core, rhog_core, &

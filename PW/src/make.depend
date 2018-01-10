@@ -553,9 +553,9 @@ fde_module.o : fde_types.o
 fde_module.o : kernel_module.o
 fde_module.o : pwcom.o
 fde_module.o : scf_mod.o
-fde_module.o : scf_mod_large.o
 fde_routines.o : ../../FFTXlib/fft_interfaces.o
 fde_routines.o : ../../FFTXlib/fft_types.o
+fde_routines.o : ../../FFTXlib/scatter_mod.o
 fde_routines.o : ../../Modules/cell_base.o
 fde_routines.o : ../../Modules/cell_base_large.o
 fde_routines.o : ../../Modules/command_line_options.o
@@ -563,6 +563,7 @@ fde_routines.o : ../../Modules/constants.o
 fde_routines.o : ../../Modules/control_flags.o
 fde_routines.o : ../../Modules/fft_base.o
 fde_routines.o : ../../Modules/funct.o
+fde_routines.o : ../../Modules/gvecw.o
 fde_routines.o : ../../Modules/input_parameters.o
 fde_routines.o : ../../Modules/io_files.o
 fde_routines.o : ../../Modules/io_global.o
@@ -577,7 +578,6 @@ fde_routines.o : ../../Modules/recvec.o
 fde_routines.o : ../../Modules/splinelib.o
 fde_routines.o : ../../Modules/wavefunctions.o
 fde_routines.o : ../../UtilXlib/mp.o
-fde_routines.o : saop.o
 fde_routines.o : esm.o
 fde_routines.o : extfield.o
 fde_routines.o : fde_functionals.o
@@ -588,6 +588,9 @@ fde_routines.o : martyna_tuckerman.o
 fde_routines.o : pwcom.o
 fde_routines.o : scf_mod.o
 fde_routines.o : scf_mod_large.o
+fde_saop.o : ../../Modules/kind.o
+fde_saop.o : fde_types.o
+fde_saop.o : scf_mod.o
 fde_types.o : ../../FFTXlib/fft_types.o
 fde_types.o : ../../Modules/kind.o
 fdepw.o : ../../Modules/command_line_options.o
@@ -619,6 +622,7 @@ force_cc.o : fde_routines.o
 force_cc.o : pwcom.o
 force_cc.o : scf_mod.o
 force_corr.o : ../../FFTXlib/fft_interfaces.o
+force_corr.o : ../../FFTXlib/scatter_mod.o
 force_corr.o : ../../Modules/atom.o
 force_corr.o : ../../Modules/cell_base.o
 force_corr.o : ../../Modules/constants.o
@@ -909,6 +913,8 @@ hinit0.o : fde_routines.o
 hinit0.o : ldaU.o
 hinit0.o : pwcom.o
 hinit0.o : realus.o
+hinit0.o : scf_mod.o
+hinit0.o : scf_mod_large.o
 hinit1.o : ../../Modules/cell_base.o
 hinit1.o : ../../Modules/control_flags.o
 hinit1.o : ../../Modules/fft_base.o
@@ -1197,7 +1203,6 @@ martyna_tuckerman.o : ../../Modules/recvec.o
 martyna_tuckerman.o : ../../Modules/ws_base.o
 martyna_tuckerman.o : ../../UtilXlib/mp.o
 martyna_tuckerman.o : fde_module.o
-martyna_tuckerman.o : pwcom.o
 memory_report.o : ../../LAXlib/mp_diag.o
 memory_report.o : ../../Modules/atom.o
 memory_report.o : ../../Modules/cell_base.o
@@ -1934,19 +1939,6 @@ s_psi.o : ../../Modules/uspp.o
 s_psi.o : ../../UtilXlib/mp.o
 s_psi.o : pwcom.o
 s_psi.o : realus.o
-saop.o : ../../FFTXlib/fft_interfaces.o
-saop.o : ../../FFTXlib/fft_types.o
-saop.o : ../../Modules/constants.o
-saop.o : ../../Modules/control_flags.o
-saop.o : ../../Modules/io_global.o
-saop.o : ../../Modules/kind.o
-saop.o : ../../Modules/radial_grids.o
-saop.o : ../../Modules/uspp.o
-saop.o : ../../UtilXlib/mp.o
-saop.o : fde_module.o
-saop.o : fde_types.o
-saop.o : pwcom.o
-saop.o : scf_mod.o
 save_in_cbands.o : ../../Modules/io_files.o
 save_in_cbands.o : ../../Modules/io_global.o
 save_in_cbands.o : ../../Modules/kind.o
@@ -1999,9 +1991,11 @@ scf_mod_large.o : buffers.o
 scf_mod_large.o : extfield.o
 scf_mod_large.o : ldaU.o
 scf_mod_large.o : pwcom.o
+scf_mod_large.o : scf_mod.o
 set_kplusq.o : ../../Modules/kind.o
 set_kup_and_kdw.o : ../../Modules/kind.o
 set_rhoc.o : ../../FFTXlib/fft_interfaces.o
+set_rhoc.o : ../../FFTXlib/scatter_mod.o
 set_rhoc.o : ../../Modules/atom.o
 set_rhoc.o : ../../Modules/cell_base.o
 set_rhoc.o : ../../Modules/constants.o
@@ -2412,7 +2406,6 @@ v_of_rho.o : ../../Modules/noncol.o
 v_of_rho.o : ../../Modules/recvec.o
 v_of_rho.o : ../../Modules/tsvdw.o
 v_of_rho.o : ../../UtilXlib/mp.o
-v_of_rho.o : saop.o
 v_of_rho.o : Coul_cut_2D.o
 v_of_rho.o : esm.o
 v_of_rho.o : fde_module.o

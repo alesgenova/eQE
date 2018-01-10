@@ -45,7 +45,7 @@ SUBROUTINE v_xc_large( rho, rho_core, rhog_core, etxc, vtxc, v )
   USE funct,            ONLY : xc, xc_spin, nlc => nlc_large, dft_is_nonlocc
   USE scf_large,        ONLY : scf_type
   USE mp_global,        ONLY : intra_pool_comm
-  USE mp_bands,         ONLY : intra_bgrp_comm => intra_lgrp_comm
+  USE mp_large,         ONLY : intra_bgrp_comm => intra_lgrp_comm
   USE mp,               ONLY : mp_sum
   use control_flags,    only : iverbosity
   !
@@ -64,7 +64,7 @@ SUBROUTINE v_h_large( rhog, ehart, charge, v )
   USE kinds,     ONLY : DP
   USE fft_base,  ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : invfft
-  USE gvecl,     ONLY : nl, nlm, ngm, gg, gstart
+  USE gvecl,     ONLY : ngm, gg, gstart
   USE lsda_mod,  ONLY : nspin
   USE large_cell_base, ONLY : omega, tpiba2
   USE control_flags, ONLY : gamma_only
@@ -147,7 +147,7 @@ SUBROUTINE gradv_h_of_rho_r_large( rho, gradv )
   USE constants,       ONLY : fpi, e2
   USE control_flags,   ONLY : gamma_only
   USE cell_base,       ONLY : tpiba, omega
-  USE gvecl,           ONLY : nl, ngm, nlm, gg, gstart, g
+  USE gvecl,           ONLY : ngm, gg, gstart, g
   USE martyna_tuckerman, ONLY : wg_corr_h, do_comp_mt
   !
   IMPLICIT NONE

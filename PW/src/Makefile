@@ -16,10 +16,16 @@ fde_functionals.o \
 fde_module.o \
 fde_routines.o \
 fde_types.o \
+fde_saop.o \
+allocate_fft_large.o \
+allocate_locpot_large.o \
+force_lc_large.o \
+gradcorr_large.o \
+init_vloc_large.o \
+v_of_rho_large.o \
 scf_mod_large.o \
 kernel_module.o \
 kernel_routines.o \
-saop.o \
 a2fmod.o \
 add_bfield.o \
 add_efield.o \
@@ -258,7 +264,7 @@ QEMODS=../../Modules/libqemod.a ../../KS_Solvers/Davidson/libdavid.a ../../KS_So
 
 TLDEPS=bindir mods libs liblapack libblas dftd3
 
-all : tldeps pw.x generate_vdW_kernel_table.x generate_rVV10_kernel_table.x
+all : tldeps pw.x generate_vdW_kernel_table.x generate_rVV10_kernel_table.x fdepw.x
 
 pw.x : $(PWOBJS) libpw.a $(LIBOBJS) $(QEMODS)
 	$(LD) $(LDFLAGS) -o $@ \
@@ -267,8 +273,7 @@ pw.x : $(PWOBJS) libpw.a $(LIBOBJS) $(QEMODS)
                ln -fs ../PW/src/$@ dist.x ; ln -fs ../PW/src/$@ manypw.x ; )
 # dist.x and manypw.x link the same executable pw.x
 
-fdepw.x : 
-	fdepw.o libpw.a $(LIBOBJS) $(QEMODS)
+fdepw.x : fdepw.o libpw.a $(LIBOBJS) $(QEMODS)
 	$(LD) $(LDFLAGS) -o $@ \
 	fdepw.o libpw.a $(QEMODS) $(LIBOBJS) $(LIBS)
 	- ( cd ../../bin; ln -fs ../PW/src/$@ . )

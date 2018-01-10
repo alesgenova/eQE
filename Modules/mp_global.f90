@@ -90,7 +90,7 @@ CONTAINS
     !
     ! Foundamental empty write statement to prevent pp.x from crashing. Not a good sign.
     !write(stdout,*) ' '
-    !call flush_unit(stdout)
+    !flush(stdout)
     !
     do_images = .FALSE.
     IF ( PRESENT(start_images) ) do_images = start_images

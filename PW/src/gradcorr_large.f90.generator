@@ -37,7 +37,6 @@ SUBROUTINE gradrho_large( nrxx, a, ngm, g, nl, ga )
   USE kinds,     ONLY : DP
   USE constants, ONLY : tpi
   USE large_cell_base, ONLY : tpiba
-  USE gvecl,     ONLY: nlm
   USE control_flags, ONLY : gamma_only
   USE fft_base,      ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : invfft
@@ -56,7 +55,6 @@ SUBROUTINE gradient_large( nrxx, a, ngm, g, nl, ga )
   USE constants, ONLY : tpi
   USE large_cell_base, ONLY : tpiba
   USE kinds,     ONLY : DP
-  USE gvecl,     ONLY : nlm
   USE control_flags, ONLY : gamma_only
   USE fft_base,      ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : fwfft, invfft
@@ -65,7 +63,7 @@ SUBROUTINE gradient_large( nrxx, a, ngm, g, nl, ga )
 !hack2018 ["gradient", "PW/src/gradcorr.f90" , "subroutine"]
 END SUBROUTINE gradient_large
 !----------------------------------------------------------------------------
-SUBROUTINE exx_gradient( nrxx, a, ngm, g, nl, ga )
+SUBROUTINE exx_gradient_large( nrxx, a, ngm, g, nl, ga )
   !----------------------------------------------------------------------------
   !
   ! ... Calculates ga = \grad a in R-space (a is also in R-space, exx grid) 
@@ -127,7 +125,7 @@ SUBROUTINE exx_gradient( nrxx, a, ngm, g, nl, ga )
   !
   RETURN
   !
-END SUBROUTINE exx_gradient
+END SUBROUTINE exx_gradient_large
 !
 !----------------------------------------------------------------------------
 SUBROUTINE grad_dot_large( nrxx, a, ngm, g, nl, alat, da )
@@ -138,7 +136,6 @@ SUBROUTINE grad_dot_large( nrxx, a, ngm, g, nl, alat, da )
   USE constants, ONLY : tpi
   USE large_cell_base, ONLY : tpiba
   USE kinds,     ONLY : DP
-  USE gvecl,     ONLY : nlm
   USE control_flags, ONLY : gamma_only
   USE fft_base,      ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : fwfft, invfft
@@ -156,7 +153,6 @@ SUBROUTINE hessian_large( nrxx, a, ngm, g, nl, ga, ha )
   USE constants, ONLY : tpi
   USE large_cell_base, ONLY : tpiba
   USE kinds,     ONLY : DP
-  USE gvecl,     ONLY : nlm
   USE control_flags, ONLY : gamma_only
   USE fft_base,      ONLY : dfftp => dfftl
   USE fft_interfaces,ONLY : fwfft, invfft
@@ -166,7 +162,7 @@ SUBROUTINE hessian_large( nrxx, a, ngm, g, nl, ga, ha )
 END SUBROUTINE hessian_large
 
 !--------------------------------------------------------------------
-SUBROUTINE laplacian( nrxx, a, ngm, gg, nl, lapla )
+SUBROUTINE laplacian_large( nrxx, a, ngm, gg, nl, lapla )
 !--------------------------------------------------------------------
   !
   ! ... Calculates lapla = \laplace a in R-space (a is also in R-space)
@@ -228,10 +224,10 @@ SUBROUTINE laplacian( nrxx, a, ngm, gg, nl, lapla )
   !
   RETURN
   !
-END SUBROUTINE laplacian
+END SUBROUTINE laplacian_large
 
 !--------------------------------------------------------------------
-SUBROUTINE external_gradient( a, grada )
+SUBROUTINE external_gradient_large( a, grada )
 !--------------------------------------------------------------------
   ! 
   ! Interface for computing gradients in real space, to be called by
@@ -251,10 +247,10 @@ SUBROUTINE external_gradient( a, grada )
 
   RETURN
 
-END SUBROUTINE external_gradient
+END SUBROUTINE external_gradient_large
 
 !--------------------------------------------------------------------
-SUBROUTINE external_hessian( a, grada, hessa )
+SUBROUTINE external_hessian_large( a, grada, hessa )
 !--------------------------------------------------------------------
   ! 
   ! Interface for computing hessian in real space, to be called by
@@ -275,10 +271,10 @@ SUBROUTINE external_hessian( a, grada, hessa )
 
   RETURN
 
-END SUBROUTINE external_hessian
+END SUBROUTINE external_hessian_large
 
 !--------------------------------------------------------------------
-SUBROUTINE external_laplacian( a, lapla )
+SUBROUTINE external_laplacian_large( a, lapla )
 !--------------------------------------------------------------------
   ! 
   ! Interface for computing laplacian in real space, to be called by 
@@ -298,5 +294,5 @@ SUBROUTINE external_laplacian( a, lapla )
 
   RETURN
 
-END SUBROUTINE external_laplacian
+END SUBROUTINE external_laplacian_large
 !--------------------------------------------------------------------

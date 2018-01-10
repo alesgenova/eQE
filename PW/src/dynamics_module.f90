@@ -41,12 +41,13 @@ MODULE dynamics_module
              langevin_md, smart_MC, allocate_dyn_vars, deallocate_dyn_vars
    PUBLIC :: temperature, refold_pos, vel
    PUBLIC :: dt, delta_t, nraise, control_temp, thermostat
+   public :: trajectory
    !
    REAL(DP) :: &
          dt,          &! time step
          temperature, &! starting temperature
          virial,      &! virial (used for the pressure)
-         delta_t      &! parameter used in thermalization
+         delta_t,     &! parameter used in thermalization
          kinetic_en   ! save the kinetic energy
    INTEGER :: &
          nraise,      &! parameter used in thermalization

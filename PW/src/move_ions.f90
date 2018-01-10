@@ -155,11 +155,11 @@ SUBROUTINE move_ions ( idone )
         if (do_fde) then
            CALL bfgs( pos, h, etot_fde, grad, fcell, fixion, tmp_dir, stdout, epse,&
                       epsf, epsp1,  energy_error, gradient_error, cell_error,  &
-                      istep, nstep, step_accepted, conv_ions, lmovecell )
+                      lmovecell, step_accepted, conv_ions, istep )
         else
-           CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
-                      epsf, epsp1,  energy_error, gradient_error, cell_error,  &
-                      istep, nstep, step_accepted, conv_ions, lmovecell )
+        CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
+          epsf, epsp1,  energy_error, gradient_error, cell_error,  &
+          lmovecell, step_accepted, conv_ions, istep )
         endif
 !         CALL bfgs( pos, h, etot, grad, fcell, fixion, tmp_dir, stdout, epse,&
 !                    epsf, epsp1,  energy_error, gradient_error, cell_error,  &

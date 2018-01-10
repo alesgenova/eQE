@@ -355,8 +355,8 @@ SUBROUTINE electrons_scf ( printout, exxen )
   USE fft_base,             ONLY : dfftp
   USE fft_base,             ONLY : dfftl
   USE gvect,                ONLY : ngm, gstart, g, gg, gcutm
-  USE gvecl,                ONLY : ngml => ngm, gstartl => gstart, nll => nl, &
-                                   nlml => nlm, gl => g, ggl => gg, gcutml => gcutm
+  USE gvecl,                ONLY : ngml => ngm, gstartl => gstart, &
+                                   gl => g, ggl => gg, gcutml => gcutm
   USE gvecs,                ONLY : doublegrid, ngms
   USE klist,                ONLY : xk, wk, nelec, ngk, nks, nkstot, lgauss, &
                                    two_fermi_energies, tot_charge
@@ -721,7 +721,8 @@ SUBROUTINE electrons_scf ( printout, exxen )
            !
         END IF
         !
-        if ( do_fde .and. .not. fde_init_rho ) call mp_barrier(world_comm)
+        if ( do_fde .and. .not. fde_init_rho ) then
+          call mp_barrier(world_comm)
         !
         ! FDE: If it's a regulare FDE scf calculation, rho_fde is updated
         !      globally at every scf cycle.
@@ -1412,11 +1413,11 @@ SUBROUTINE electrons_scf ( printout, exxen )
             /'     Harris-Foulkes estimate   =',0PF17.8,' Ry' &
             /'     estimated scf accuracy    <',1PE17.1,' Ry' )
 9085 FORMAT(/'     total all-electron energy =',0PF17.6,' Ry' )
-9084 FORMAT(/'     frag. estimated scf acc.  <',PF17.8,' Ry' ) ! fde
-9086 FORMAT(/'     max. frag. est. scf acc.  =',PF17.8,' Ry' )
-9087 FORMAT(/'     frag. estimated scf acc.  <',PE17.1,' Ry' )
-9088 FORMAT(/'     max. frag. est. scf acc.  =',PE17.1,' Ry' )
-9089 FORMAT(/'     variable fragment charge  =',PE17.1,' e-' )
+9084 FORMAT(/'     frag. estimated scf acc.  <',0PF17.8,' Ry' ) ! fde
+9086 FORMAT(/'     max. frag. est. scf acc.  =',0PF17.8,' Ry' )
+9087 FORMAT(/'     frag. estimated scf acc.  <',0PE17.1,' Ry' )
+9088 FORMAT(/'     max. frag. est. scf acc.  =',0PE17.1,' Ry' )
+9089 FORMAT(/'     variable fragment charge  =',0PE17.1,' e-' )
 
   END SUBROUTINE print_energies
   !

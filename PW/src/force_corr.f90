@@ -24,7 +24,7 @@ subroutine force_corr (forcescc)
   USE ions_base,            ONLY : nat, ntyp => nsp, ityp, tau
   USE cell_base,            ONLY : tpiba
   USE fft_base,             ONLY : dfftp
-  use fft_base,             only : grid_gather, grid_scatter
+  use scatter_mod,          only : gather_grid, scatter_grid
   USE fft_interfaces,       ONLY : fwfft
   USE gvect,                ONLY : ngm, gstart, g, ngl, gl, igtongl
   USE lsda_mod,             ONLY : nspin
@@ -69,9 +69,9 @@ subroutine force_corr (forcescc)
   if ( .false. ) then
       if ( ionode ) allocate(raux1(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
       allocate(raux2(dfftp%nnr))
-      call grid_gather(real(psic, kind=dp), raux1)
+      call gather_grid( dfftp,real(psic, kind=dp), raux1)
       if ( ionode ) call mp_sum(raux1, inter_fragment_comm)
-      call grid_scatter(raux1, raux2)
+      call scatter_grid( dfftp,raux1, raux2)
       psic(:) = cmplx(raux2(:), 0.d0)
       if ( ionode ) deallocate(raux1)
       deallocate(raux2)

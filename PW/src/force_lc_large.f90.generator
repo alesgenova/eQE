@@ -23,4 +23,4 @@ subroutine force_lc_large (nat, tau, ityp, alat, omega, ngm, ngl, &
   USE Coul_cut_2D, ONLY : do_cutoff_2D, cutoff_force_lc
   implicit none
   !hack2018["force_lc","PW/src/force_lc.f90", "subroutine"] 
-end subroutine force_lc
+end subroutine force_lc_large

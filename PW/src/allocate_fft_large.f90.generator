@@ -16,7 +16,7 @@ SUBROUTINE allocate_fft_large
   !     these dimensions
   !
   USE io_global, ONLY : stdout
-  USE gvecl,     ONLY : ngm, g, gg, nl, nlm, mill, igtongl
+  USE gvecl,     ONLY : ngm, g, gg, mill, igtongl
   USE gvecs,   ONLY : ngms
   USE fft_base,   ONLY : dfftp => dfftl, dffts
   USE ions_base, ONLY : nat

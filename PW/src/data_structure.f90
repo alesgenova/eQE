@@ -19,7 +19,7 @@ SUBROUTINE data_structure( gamma_only )
   USE mp_large,   ONLY : me_lgrp, nproc_lgrp, root_lgrp, intra_lgrp_comm
   USE mp_pools,   ONLY : inter_pool_comm
   USE fft_base,   ONLY : dfftp, dffts, fft_base_info, smap
-  USE fft_base,   ONLY : dfftl, smap_large
+  USE fft_base,   ONLY : dfftl, smap_large, fft_base_info_large
   USE fft_types,  ONLY : fft_type_init
   USE cell_base,  ONLY : at, bg, tpiba
   USE large_cell_base,  ONLY : atl => at, bgl => bg, tpibal => tpiba

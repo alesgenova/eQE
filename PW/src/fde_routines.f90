@@ -387,8 +387,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
                                        get_iexch, get_icorr, get_igcx, &
                                        get_igcc, get_inlc
   USE control_flags,            ONLY : conv_elec
-#ifdef __SAOP
-  USE saop, only: v_rho_saop
+#if defined(__SAOP)
+  !USE saop, only: v_rho_saop
 #endif
 
 
@@ -421,7 +421,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
   complex(dp), allocatable :: RegularDensityG(:)
   integer :: innercount=0
 
-#ifdef __SAOP
+#if defined(__SAOP)
   logical :: fde_saop
 #endif
 
@@ -444,8 +444,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
     allocate( RegularDensity(dfftp%nnr), RegularDensityG(dfftp%nnr) )
     RegularDensityG(1:dfftp%nnr) = (0.0d0,0.0d0)
     RegularDensity(1:dfftp%nnr) = 0.0d0
-    call PartitionWeight(RegularDensity,RegularDensityG,.false.)
-    call GlueRegRhoToRho(rho,RegularDensity,RegularDensityG)
+    !call PartitionWeight(RegularDensity,RegularDensityG,.false.)
+    !call GlueRegRhoToRho(rho,RegularDensity,RegularDensityG)
 
 ! verbose
 !  if (ionode) then
@@ -576,8 +576,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
                                   calc_ener_in_v_of_rho)) then
       if (saop_nadd) then
         write(stdout,*) "SAOP NADD RHO_FDE_LARGE FAKESPIN"
-#ifdef __SAOP
-        call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, etxc, trash, auxl_fde, native_cell, fde_nspin)
+#if defined(__SAOP)
+        !call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, etxc, trash, auxl_fde, native_cell, fde_nspin)
 #else
       call errore('fde_nonadditive', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif
@@ -591,8 +591,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
     else
       if (saop_nadd) then
         write(stdout,*) "SAOP NADD RHO_FDE FAKESPIN"
-#ifdef __SAOP
-        call v_rho_saop(rho_fde, rho_core_fde, rhog_core_fde, etxc, trash, aux_fde, reduced_cell, fde_nspin)
+#if defined(__SAOP)
+        !call v_rho_saop(rho_fde, rho_core_fde, rhog_core_fde, etxc, trash, aux_fde, reduced_cell, fde_nspin)
 #else
       call errore('fde_nonadditive', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif
@@ -607,12 +607,12 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
                                   calc_ener_in_v_of_rho)) then
       if (saop_nadd) then
         write(stdout,*) "SAOP NADD RHO_FDE_LARGE"
-#ifdef __SAOP
+#if defined(__SAOP)
         !plot the potential, for debugging
         if (conv_elec) then
           allocate( auxl2(dfftl%nnr, nspin) )
           allocate( auxl3(dfftl%nnr, nspin) )
-          call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, &
+          !call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, &
                           etxc, trash, auxl, native_cell, nspin, auxl2, auxl3)
           call plot_large(auxl(:,1),'vsaop_conv.pp       ')
           call plot_large(auxl2(:,1),'vpbe_conv.pp       ')
@@ -620,7 +620,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
           deallocate(auxl2)
           deallocate(auxl3)
         else
-          call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, etxc, trash, auxl, native_cell, nspin)
+          !call v_rho_saop(rho_fde_large, rho_core_fde_large, rhog_core_fde_large, etxc, trash, auxl, native_cell, nspin)
         endif
 #else
       call errore('fde_nonadditive', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
@@ -635,8 +635,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
     else
       if (saop_nadd) then
         write(stdout,*) "SAOP NADD RHO_FDE"
-#ifdef __SAOP
-        call v_rho_saop(rho_fde, rho_core_fde, rhog_core_fde, etxc, trash, aux, reduced_cell, nspin)
+#if defined(__SAOP)
+        !call v_rho_saop(rho_fde, rho_core_fde, rhog_core_fde, etxc, trash, aux, reduced_cell, nspin)
 #else
       call errore('fde_nonadditive', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif
@@ -654,18 +654,18 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
   ! the fragment
   etxc0 = 0.d0
 
-#ifdef __SAOP
+#if defined(__SAOP)
 
   if (.false.) then
     write(stdout,*) "SAOP DEBUG"
-    call v_rho_saop(rho, rho_core, rhog_core, trash, trash2, aux, reduced_cell, fde_frag_nspin)
+    !call v_rho_saop(rho, rho_core, rhog_core, trash, trash2, aux, reduced_cell, fde_frag_nspin)
   endif
 
   !if ( innercount > 0 ) then
   if ( .false. ) then
     ! only calculate saop after the first iteration, since the evc array is not initialized before
     if (fde_saop) then
-      call v_rho_saop(rho, rho_core, rhog_core, trash, trash2, aux, reduced_cell, fde_frag_nspin)
+      !call v_rho_saop(rho, rho_core, rhog_core, trash, trash2, aux, reduced_cell, fde_frag_nspin)
       v(:,:) = v(:,:) + aux(:,:)
     endif
 
@@ -691,8 +691,8 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
     aux_frag(:,:) = 0.d0
     if (saop_nadd) then
     write(stdout,*) "SAOP NADD RHO"
-#ifdef __SAOP
-      call v_rho_saop(rho, rho_core, rhog_core, etxc0, trash, aux_frag, reduced_cell, nspin)
+#if defined(__SAOP)
+      !call v_rho_saop(rho, rho_core, rhog_core, etxc0, trash, aux_frag, reduced_cell, nspin)
 #else
       call errore('fde_nonadditive', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif
@@ -1061,7 +1061,7 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
      else
        call gradrho(dfftp%nnr, rhogsum, ngm, g, nl, grho)
      endif
-     if ( fde_regrho ) call GradRegularRho(rhoout,grho,rho%is_fde)
+     !if ( fde_regrho ) call GradRegularRho(rhoout,grho,rho%is_fde)
 
      mod_grho(:) = sqrt(grho(1,:)**2 + grho(2,:)**2 + grho(3,:)**2)
 
@@ -1441,7 +1441,7 @@ SUBROUTINE fde_kin_gp_lda(rho, rho_core, rhog_core, ene, v)
         ! DEBUG BLOCK
         !if (ir == ir_ofmax ) then
         !  write(stdout,*) ydata , v(ir,1)
-        !  call flush_unit(stdout)
+        !  flush(stdout)
         !endif
         ! !!!!
       endif
@@ -1570,6 +1570,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
   use klist,                    only : nelec
   use wvfct,                    only : npw, npwx, wg
   use io_global,                only : stdout, ionode, ionode_id
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   !-- parameters --------------------------------------------------------------
   complex(dp), intent(in) :: rhog(ngm,nspin)
@@ -1662,7 +1663,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
              gauxl(:) = cmplx( rho_fde_large%of_r(:,1) - &
                                rho_fde_large%of_r(:,2), &
                                0.d0, kind=dp )
-             call fwfft ('Custom', gauxl, dfftl)
+             call fwfft ('Rho', gauxl, dfftl)
              tmp_gauxl(1:ngml) = gauxl(dfftl%nl(1:ngml))
              call fde_fake_nspin( .true. , 1 )
              call v_h_large( tmp_gauxl, esi, charge, auxl_fde )
@@ -1679,7 +1680,7 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
         if (fde_frag_nspin == 2 ) then
            if (iverbosity>-1) write(stdout,*) 'SI correction on the spin density'
            gaux(:) = CMPLX(abs(rhor(:,1)-rhor(:,2)),0.d0,kind=dp)
-           call fwfft ('Dense', gaux, dfftp)
+           call fwfft ('Rho', gaux, dfftp)
         elseif (fde_frag_nspin == 1) then
            if (iverbosity>-1) write(stdout,*) 'SI correction on the HOMO'
            if (iverbosity>-1) write(stdout,*) 'WARNING: SI correction only available for Norm Conserving PS'
@@ -1694,9 +1695,9 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
            charge = sum(real(mgaux(1:dffts%nnr)))*domega
            call mp_sum(charge, intra_bgrp_comm)
            if (iverbosity>-1) write(stdout,*) 'Charge in SI correction = ',charge
-           call interpolate (mgaux, gaux,1)
+           call fft_interpolate_complex(dffts, mgaux, dfftp, gaux,1)
            deallocate(mgaux)
-           call fwfft('Dense', gaux, dfftp)
+           call fwfft('Rho', gaux, dfftp)
         endif
 
         tmp_gaux(1:ngm) = gaux(dfftp%nl(1:ngm))
@@ -1715,15 +1716,15 @@ SUBROUTINE v_h_fde( rhog, rhor, rhog_fde, ehart, charge, v )
         if (ionode) allocate(raux1(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
         if (linterlock .and. .false.) then
            if (ionode) allocate(rauxl(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
-           call grid_gather_large( auxl_fde(:,1), rauxl )
+           call gather_grid( dfftl, auxl_fde(:,1), rauxl )
            if (ionode) call mp_sum(rauxl, inter_fragment_comm)
            raux1(:) = rauxl(f2l(:))
            if (ionode) deallocate(rauxl)
         else
-           call grid_gather(v_si, raux1)
+           call gather_grid( dfftp,v_si, raux1)
            if (ionode) call mp_sum(raux1, inter_fragment_comm)
         endif
-        call grid_scatter(raux1, v_si)
+        call scatter_grid( dfftp,raux1, v_si)
         if (ionode) deallocate(raux1)
      endif
      !   if (linterlock .and. ) then
@@ -1801,6 +1802,7 @@ SUBROUTINE update_rho_fde (density, total)
   use lsda_mod,                 only : nspin
   use control_flags,            only : iverbosity
   use command_line_options,    only : fancy_parallel_
+  use scatter_mod,          only : gather_grid, scatter_grid
 
   implicit none
   type(scf_type), intent(in) :: density ! scf_type, either rho or rhoin
@@ -1828,7 +1830,7 @@ SUBROUTINE update_rho_fde (density, total)
         !
         do is=1,fde_nspin
            !
-           call grid_gather(rho_fde%of_r(:,is), raux)
+           call gather_grid( dfftp,rho_fde%of_r(:,is), raux)
            if (linterlock) then
              if (ionode) then
                rauxl = 0.d0
@@ -1840,16 +1842,16 @@ SUBROUTINE update_rho_fde (density, total)
                endif
              endif
              !
-             call grid_scatter_large(rauxl, rho_fde_large%of_r(:,is))
+             call scatter_grid( dfftl,rauxl, rho_fde_large%of_r(:,is))
 
              gauxl(:) = cmplx(rho_fde_large%of_r(:,is), 0.d0, kind=dp)
-             call fwfft ('Custom', gauxl, dfftl)
+             call fwfft ('Rho', gauxl, dfftl)
              rho_fde_large%of_g(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
              !
              if (.not. fde_dotsonlarge .or. fde_overlap) then
-               call grid_scatter(raux, rho_fde%of_r(:,is))
+               call scatter_grid( dfftp,raux, rho_fde%of_r(:,is))
                gaux(:) = cmplx(rho_fde%of_r(:,is), 0.d0, kind=dp)
-               call fwfft ('Dense', gaux, dfftp)
+               call fwfft ('Rho', gaux, dfftp)
                rho_fde%of_g(1:ngm,is) = gaux(dfftp%nl(1:ngm))
              endif
              !
@@ -1857,7 +1859,7 @@ SUBROUTINE update_rho_fde (density, total)
              !
              ! it's now always interlock!
              !if (ionode) call mp_sum(raux, inter_fragment_comm)
-             !call grid_scatter(raux, rho_fde%of_r(:,is))
+             !call scatter_grid( dfftp,raux, rho_fde%of_r(:,is))
              !call c_grid_gather_sum_scatter(rho_fde%of_g(:,is))
            endif
            !
@@ -1890,7 +1892,7 @@ SUBROUTINE update_rho_fde (density, total)
         endif
         do is=1,fde_nspin
            gauxl(:)=cmplx(rho_fde_large%of_r(:,is),0.d0,kind=dp)
-           call fwfft('Custom',gauxl,dfftl)
+           call fwfft('Rho',gauxl,dfftl)
            rho_fde_large%of_g(1:ngml,is)=gauxl(dfftl%nl(1:ngml))
         enddo
         deallocate(rho_old_large,density_large,gauxl)
@@ -2059,6 +2061,7 @@ SUBROUTINE fde_plot_electrostatics
   USE io_files,                 ONLY : prefix
   USE fde
   use scf_large,          only : vltot_large => vltot
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   integer, external :: find_free_unit
   integer :: unit, is
@@ -2075,13 +2078,13 @@ SUBROUTINE fde_plot_electrostatics
                                 rauxl2(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x) )
 
   ! V_bare
-  call grid_gather_large( vltot_large, rauxl1 )
+  call gather_grid( dfftl, vltot_large, rauxl1 )
 
   ! V_H
   auxl(:,:) = 0.d0
   call v_h_large( rho_fde_large%of_g, trash0, trash1, auxl )
 
-  call grid_gather_large( auxl(:,1), rauxl2 )
+  call gather_grid( dfftl, auxl(:,1), rauxl2 )
 
   ! sum and plot
   if (ionode.and.&
@@ -2122,6 +2125,7 @@ SUBROUTINE fde_plot_density
   USE io_files,                 ONLY : prefix
   USE fde
   use scf, only : rho
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   integer, external :: find_free_unit
   integer :: unit, is
@@ -2140,7 +2144,7 @@ SUBROUTINE fde_plot_density
 !  if (fde_nspin == 2) raux = raux + rho_fde%of_r(:,2)
 
   if (sum(fde_printdensity_vec(:)) > 0) then
-  call flush_unit(stdout)
+  flush(stdout)
   if (linterlock) then
     CALL dcopy (dfftl%nnr, rho_fde_large%of_r (1, 1), 1, auxl, 1)
     DO is = 2, fde_nspin
@@ -2148,19 +2152,19 @@ SUBROUTINE fde_plot_density
     ENDDO
 
       if ( ionode .and. currfrag==1) allocate(rauxl(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x))
-      call grid_gather_large(auxl, rauxl)
+      call gather_grid( dfftl,auxl, rauxl)
       if ( ionode .and. currfrag==1) &
       call plot_io (trim(prefix)//'_fde_rho.pp', 'FDE rho', dfftl%nr1x, dfftl%nr2x, dfftl%nr3x, &
              dfftl%nr1,  dfftl%nr2,  dfftl%nr3, nat_fde, ntyp, ibrav, celldml, atl, &
              gcutml, dual, ecutwfc, 0, atm, ityp_fde, zv, tau_fde, rauxl, +1)
 
-      call flush_unit(stdout)
+      flush(stdout)
       if (fde_nspin == 2) then
          ! the the magnetization
 !         raux = rho_fde%of_r(:,1) - rho_fde%of_r(:,2)
          CALL dcopy (dfftl%nnr, rho_fde_large%of_r (1, 1), 1, auxl, 1)
          CALL daxpy (dfftl%nnr, - 1.d0, rho_fde_large%of_r (1, 2), 1, auxl, 1)
-         call grid_gather_large(auxl, rauxl)
+         call gather_grid( dfftl,auxl, rauxl)
          if ( ionode .and. currfrag==1 ) &
          call plot_io (trim(prefix)//'_fde_magn.pp', 'FDE magn', dfftl%nr1x, dfftl%nr2x, dfftl%nr3x, &
                 dfftl%nr1,  dfftl%nr2,  dfftl%nr3, nat_fde, ntyp, ibrav, celldml, atl, &
@@ -2173,19 +2177,19 @@ SUBROUTINE fde_plot_density
       CALL daxpy (dfftp%nnr, 1.d0, rho_fde%of_r (1, is), 1, raux, 1)
     ENDDO
 
-      call grid_gather(raux, raux1)
+      call gather_grid( dfftp,raux, raux1)
       if ( ionode ) &
       call plot_io (trim(prefix)//'_fde_rho.pp', 'FDE rho', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
              dfftp%nr1,  dfftp%nr2,  dfftp%nr3, nat_fde, ntyp, ibrav, celldm, at, &
              gcutm, dual, ecutwfc, 0, atm, ityp_fde, zv, tau_fde, raux1, +1)
 
-      call flush_unit(stdout)
+      flush(stdout)
       if (fde_nspin == 2) then
          ! the the magnetization
 !         raux = rho_fde%of_r(:,1) - rho_fde%of_r(:,2)
          CALL dcopy (dfftp%nnr, rho_fde%of_r (1, 1), 1, raux, 1)
          CALL daxpy (dfftp%nnr, - 1.d0, rho_fde%of_r (1, 2), 1, raux, 1)
-         call grid_gather(raux, raux1)
+         call gather_grid( dfftp,raux, raux1)
          if ( ionode) &
          call plot_io (trim(prefix)//'_fde_magn.pp', 'FDE magn', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
                 dfftp%nr1,  dfftp%nr2,  dfftp%nr3, nat_fde, ntyp, ibrav, celldm, at, &
@@ -2193,7 +2197,7 @@ SUBROUTINE fde_plot_density
       endif
  endif ! linterlock
 endif
-      call flush_unit(stdout)
+      flush(stdout)
 
   if (fde_print_density_frag) then
       CALL dcopy (dfftp%nnr, rho%of_r (1, 1), 1, raux, 1)
@@ -2201,7 +2205,7 @@ endif
         CALL daxpy (dfftp%nnr, 1.d0, rho%of_r (1, is), 1, raux, 1)
       ENDDO
 
-      call grid_gather(raux, raux1)
+      call gather_grid( dfftp,raux, raux1)
       if (currfrag<10) write(charfrag,'(i1)')currfrag
       if (currfrag>9) write(charfrag,'(i2)')currfrag
       if ( ionode ) &
@@ -2213,7 +2217,7 @@ endif
 !         raux = rho_fde%of_r(:,1) - rho_fde%of_r(:,2)
          CALL dcopy (dfftp%nnr, rho%of_r (1, 1), 1, raux, 1)
          CALL daxpy (dfftp%nnr, - 1.d0, rho%of_r (1, 2), 1, raux, 1)
-         call grid_gather(raux, raux1)
+         call gather_grid( dfftp,raux, raux1)
          if ( ionode) &
          call plot_io (trim(prefix)//'_fde_magn_'//trim(charfrag)//'.pp', 'FDE magn', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
                 dfftp%nr1,  dfftp%nr2,  dfftp%nr3, nat, ntyp, ibrav, celldm, at, &
@@ -2228,7 +2232,7 @@ endif
         CALL daxpy (dfftp%nnr, 1.d0, rho%of_r (1, is), 1, raux, 1)
       ENDDO
 
-      call grid_gather(raux, raux1)
+      call gather_grid( dfftp,raux, raux1)
 
       if (currfrag<10) write(charfrag,'(i1)')currfrag
       if (currfrag>9) write(charfrag,'(i2)')currfrag
@@ -2246,7 +2250,7 @@ endif
 !         raux = rho_fde%of_r(:,1) - rho_fde%of_r(:,2)
          CALL dcopy (dfftp%nnr, rho%of_r (1, 1), 1, raux, 1)
          CALL daxpy (dfftp%nnr, - 1.d0, rho%of_r (1, 2), 1, raux, 1)
-         call grid_gather(raux, raux1)
+         call gather_grid( dfftp,raux, raux1)
          if ( ionode) then
             rauxl=0.d0
             rauxl(f2l(:))=raux1(:)
@@ -2294,6 +2298,7 @@ SUBROUTINE fde_plot_embedpot
   use lsda_mod,                 only : nspin
   USE fde
   use vlocal ,                  only : strf
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   integer, external :: find_free_unit
   integer :: unit, is
@@ -2362,18 +2367,18 @@ SUBROUTINE fde_plot_embedpot
 
     if (linterlock) then
        do is = 1, nspin
-          call grid_gather(rho%of_r(:,is), raux)
+          call gather_grid( dfftp,rho%of_r(:,is), raux)
           if (ionode) then
              allocate(rauxl(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x))
              rauxl = 0.d0
              rauxl(f2l(:)) = raux(:)
              call mp_bcast(rauxl, frag_to_plot -1, inter_fragment_comm)
           endif
-          call grid_scatter_large(rauxl, auxl(:,is)) ! Change it
+          call scatter_grid( dfftl,rauxl, auxl(:,is)) ! Change it
           if (ionode) deallocate( rauxl )
           environ_rhor(:,is) = rho_fde_large%of_r(:,is) - auxl(:,is)
           gauxl(:) = cmplx(environ_rhor(:,is), 0.d0, kind=dp)
-          call fwfft ('Custom', gauxl, dfftl)
+          call fwfft ('Rho', gauxl, dfftl)
           environ_rhog(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
        enddo
 
@@ -2437,7 +2442,7 @@ SUBROUTINE fde_plot_embedpot
 
   do is = 1, fde_frag_nspin
     if (is == 2) channel = '_beta'
-    call grid_gather(vemb(:,is), raux)
+    call gather_grid( dfftp,vemb(:,is), raux)
     if ( ionode ) &
       call plot_io (trim(prefix)//'_embedpot'//trim(image_label)//trim(channel)//'.pp', &
               'Embedding Potential', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
@@ -2484,6 +2489,7 @@ SUBROUTINE fde_plot_gradrho
   use lsda_mod,                 only : nspin
   USE fde
   use vlocal ,                  only : strf
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   integer, external :: find_free_unit
   integer :: unit, is, ipol
@@ -2536,7 +2542,7 @@ SUBROUTINE fde_plot_gradrho
            idir = 'z'
         endif
 
-        call grid_gather( grho(ipol,:), raux )
+        call gather_grid( dfftp, grho(ipol,:), raux )
 
 
         if (ionode) then
@@ -2565,7 +2571,7 @@ SUBROUTINE fde_plot_gradrho
         elseif ( ipol == 3 ) then
            idir = 'z'
         endif
-        call grid_gather_large( grho_large(ipol,:), rauxl )
+        call gather_grid( dfftl, grho_large(ipol,:), rauxl )
         if (ionode) call mp_bcast(rauxl, frag_to_plot -1, inter_fragment_comm)
         if ( currfrag == frag_to_plot ) then
            if (ionode) then
@@ -2595,7 +2601,7 @@ SUBROUTINE fde_plot_gradrho
                idir = 'z'
             endif
 
-            call grid_gather( grho(ipol,:), raux )
+            call gather_grid( dfftp, grho(ipol,:), raux )
 
 
             if (ionode) then
@@ -2645,6 +2651,7 @@ SUBROUTINE fde_plot_allpot
   use vlocal,                   only : strf
   use lsda_mod,                 only : nspin
   use cell_base,                only : omega
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   integer, external :: find_free_unit
   integer :: unit, is, i
@@ -2678,7 +2685,7 @@ SUBROUTINE fde_plot_allpot
       case(1)
         aux(:,:) = 0.d0
         call setlocal_fde(aux(:,1), strf)
-        call grid_gather(aux(:,1),raux1)
+        call gather_grid( dfftp,aux(:,1),raux1)
         if ( ionode ) &
         call plot_io(trim(prefix)//'_'//trim(potlabels(i))//trim(image_label)//'.pp', &
               trim(potlabels(i))//trim(image_label), dfftp%nr1x, dfftp%nr2x,dfftp%nr3x, &
@@ -2688,7 +2695,7 @@ SUBROUTINE fde_plot_allpot
         if (currfrag==1) then
           aux(:,:) = 0.d0
           call setlocal_fde(aux(:,1), strf_fde)
-          call grid_gather(aux(:,1),raux1)
+          call gather_grid( dfftp,aux(:,1),raux1)
           if ( ionode ) &
           call plot_io (trim(prefix)//'_'//trim(potlabels(i))//'rhotot'//'.pp',&
               trim(potlabels(i))//'rhotot', dfftp%nr1x, dfftp%nr2x,dfftp%nr3x, &
@@ -2701,7 +2708,7 @@ SUBROUTINE fde_plot_allpot
 
         aux(:,:) = 0.d0
         call v_xc(rho, rho_core, rhog_core, trash0, trash1, aux)
-        call grid_gather(aux(:,1),raux1)
+        call gather_grid( dfftp,aux(:,1),raux1)
         if ( ionode ) then
            do is = 1 , nspin
               call plot_io(trim(prefix)//'_'//trim(potlabels(i))//trim(image_label)//trim(spinlabels(is))//'.pp', &
@@ -2714,7 +2721,7 @@ SUBROUTINE fde_plot_allpot
         if (currfrag==1) then
           aux(:,:) = 0.d0
           call v_xc(rho_fde, rho_core_fde, rhog_core_fde, trash0, trash1, aux)
-          call grid_gather(aux(:,1),raux1)
+          call gather_grid( dfftp,aux(:,1),raux1)
           if ( ionode ) then
              do is = 1 , fde_nspin
                 call plot_io (trim(prefix)//'_'//trim(potlabels(i))//'rhotot'//trim(spinlabels(is))//'.pp',&
@@ -2729,7 +2736,7 @@ SUBROUTINE fde_plot_allpot
 
         aux(:,:) = 0.d0
         call v_h( rho%of_g, trash0, trash1, aux )
-        call grid_gather(aux(:,1),raux1)
+        call gather_grid( dfftp,aux(:,1),raux1)
         if ( ionode ) then
            do is = 1 , nspin
               call plot_io(trim(prefix)//'_'//trim(potlabels(i))//trim(image_label)//trim(spinlabels(is))//'.pp', &
@@ -2742,7 +2749,7 @@ SUBROUTINE fde_plot_allpot
         if (currfrag==1) then
           aux(:,:) = 0.d0
           call v_h( rho_fde%of_g, trash0, trash1, aux )
-          call grid_gather(aux(:,1),raux1)
+          call gather_grid( dfftp,aux(:,1),raux1)
           if ( ionode ) then
              do is = 1 , fde_nspin
                 call plot_io (trim(prefix)//'_'//trim(potlabels(i))//'rhotot'//trim(spinlabels(is))//'.pp',&
@@ -2757,7 +2764,7 @@ SUBROUTINE fde_plot_allpot
 
         aux(:,:) = 0.d0
         call fde_kin( rho, rho_gauss, rhog_gauss, trash0, aux, reduced_cell, NonlocalKernel)!dfftp, ngm, g, nl, omega, .false. )
-        call grid_gather(aux(:,1),raux1)
+        call gather_grid( dfftp,aux(:,1),raux1)
         if ( ionode ) then
              do is = 1 , nspin
               call plot_io(trim(prefix)//'_'//trim(potlabels(i))//trim(image_label)//trim(spinlabels(is))//'.pp', &
@@ -2770,7 +2777,7 @@ SUBROUTINE fde_plot_allpot
         if (currfrag==1) then
           aux(:,:) = 0.d0
           call fde_kin( rho_fde, rho_gauss_fde, rhog_gauss_fde, trash0, aux, reduced_cell, NonlocalKernel)!dfftp, ngm, g,nl, omega, .false. )
-          call grid_gather(aux(:,1),raux1)
+          call gather_grid( dfftp,aux(:,1),raux1)
           if ( ionode ) then
              do is = 1 , fde_nspin
                 call plot_io (trim(prefix)//'_'//trim(potlabels(i))//'rhotot'//trim(spinlabels(is))//'.pp',&
@@ -2812,6 +2819,8 @@ SUBROUTINE plot_dense( invec, label )
   USE io_files,                 ONLY : prefix
   USE mp_global,                ONLY : my_image_id
   use fde,                      only : ityp_fde, tau_fde, nat_fde, currfrag
+  use scatter_mod,          only : gather_grid, scatter_grid
+
   implicit none
   real(dp) , intent(in) :: invec(dfftp%nnr)
   character(len=16) , intent(in) :: label
@@ -2826,7 +2835,7 @@ SUBROUTINE plot_dense( invec, label )
 !  allocate(raux(dfftp%nnr))
   if (ionode) allocate(raux1(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
 
-  call grid_gather(invec, raux1)
+  call gather_grid( dfftp,invec, raux1)
   if ( ionode ) &
       call plot_io (trim(label), &
               'Dense Grid', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
@@ -2856,6 +2865,7 @@ SUBROUTINE plot_large( invec, label )
   USE io_files,                 ONLY : prefix
   USE mp_global,                ONLY : my_image_id
   use fde,                      only : ityp_fde, tau_fde, nat_fde , currfrag
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
   real(dp) , intent(in) :: invec(dfftp%nnr)
   character(len=16) , intent(in) :: label
@@ -2870,7 +2880,7 @@ SUBROUTINE plot_large( invec, label )
 !  allocate(raux(dfftp%nnr))
   if (ionode) allocate(raux1(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
 
-  call grid_gather_large(invec, raux1)
+  call gather_grid( dfftp,invec, raux1)
   if ( ionode ) &
       call plot_io (trim(label), &
               'Large Grid', dfftp%nr1x, dfftp%nr2x, dfftp%nr3x, &
@@ -3019,7 +3029,7 @@ SUBROUTINE setlocal_fde(pot, strf)
   !
   ! ... aux = potential in G-space . FFT to real space
   !
-  CALL invfft ('Dense', aux, dfftp)
+  CALL invfft ('Rho', aux, dfftp)
   !
   pot (:) =  DBLE (aux (:) )
   !
@@ -3137,7 +3147,7 @@ SUBROUTINE setlocal_fde_large(pot, strf)
   !
   ! ... aux = potential in G-space . FFT to real space
   !
-  CALL invfft ('Custom', aux, dfftl)
+  CALL invfft ('Rho', aux, dfftl)
   !
   pot (:) =  DBLE (aux (:) )
   !
@@ -3789,6 +3799,7 @@ subroutine potential_wall( dfftp, pot )
   use kinds , only : dp
   use io_global, only : stdout, ionode
   USE fft_types,  ONLY : fft_type_descriptor
+  use scatter_mod,          only : gather_grid, scatter_grid
   implicit none
 
   type(fft_type_descriptor), intent(in) :: dfftp
@@ -3863,7 +3874,7 @@ subroutine potential_wall( dfftp, pot )
 
   endif
 
-  call grid_scatter(raux, pot)
+  call scatter_grid( dfftp,raux, pot)
 
   if (ionode) deallocate(raux)
 
@@ -4091,6 +4102,7 @@ end subroutine grididx_g2f
 
 subroutine calc_f2l(f2l, dfftp, dfftl, shift, offset)
    USE fft_types,  ONLY : fft_type_descriptor
+   use scatter_mod,          only : gather_grid, scatter_grid
 
    implicit none
 
@@ -4131,6 +4143,7 @@ subroutine copy_pot_f2l( vf, vl )
   use io_global, only : ionode
   use mp, only: mp_sum
   use mp_images, only: inter_fragment_comm
+  use scatter_mod,          only : gather_grid, scatter_grid
 
   real(dp) , intent(in) :: vf(dfftp%nnr)
   real(dp) , intent(inout) :: vl(dfftl%nnr)
@@ -4139,7 +4152,7 @@ subroutine copy_pot_f2l( vf, vl )
 
 
   if (ionode) allocate(raux(dfftp%nr1x*dfftp%nr2x*dfftp%nr3x))
-  call grid_gather(vf, raux)
+  call gather_grid( dfftp,vf, raux)
 
   if (ionode) then
     allocate(rauxl(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x))
@@ -4149,7 +4162,7 @@ subroutine copy_pot_f2l( vf, vl )
   endif
 
 !  if (ionode) call mp_sum(raux1, inter_fragment_comm)
-  call grid_scatter_large(rauxl, vl)
+  call scatter_grid( dfftl,rauxl, vl)
   if (ionode) deallocate(rauxl)
 
 !
@@ -4174,9 +4187,10 @@ subroutine copy_pot_l2f( vl, vf )
   use mp, only: mp_bcast
   use mp_images, only: inter_fragment_comm
   use command_line_options,    only : fancy_parallel_
+  use scatter_mod,          only : gather_grid, scatter_grid
 
 
-  real(dp) , intent(in) :: vf(dfftp%nnr)
+  real(dp) , intent(inout) :: vf(dfftp%nnr)
   real(dp) , intent(inout) :: vl(dfftl%nnr)
   real(dp), allocatable :: raux(:), rauxl(:)
   real(dp), allocatable :: aux(:), auxl(:)
@@ -4187,7 +4201,7 @@ subroutine copy_pot_l2f( vl, vf )
     !rauxl = 0.d0
   endif
 
-  call grid_gather_large(vl, rauxl)
+  call gather_grid( dfftl,vl, rauxl)
 
   if (ionode) then
 ! if we're not using fancy parallelization, each image has its own rauxl
@@ -4199,7 +4213,7 @@ subroutine copy_pot_l2f( vl, vf )
   endif
 
 !  if (ionode) call mp_sum(raux1, inter_fragment_comm)
-  call grid_scatter(raux, vf)
+  call scatter_grid( dfftp,raux, vf)
   if (ionode) deallocate(raux)
 !
   return

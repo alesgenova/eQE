@@ -211,7 +211,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   CALL pw_readfile( 'dim',   ierr )
   CALL errore( 'read_xml_file ', 'problem reading file ' // &
              & TRIM( tmp_dir ) // TRIM( prefix ) // '.save', ierr )
-  CALL flush_unit(stdout)
+  flush(stdout)
   !
   ! ... allocate space for atomic positions, symmetries, forces
   !
@@ -434,7 +434,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   if (do_fde) call update_rho_fde(rho, .true.)
   !
   ! ... read info needed for hybrid functionals
-  call flush_unit(stdout)
+  flush(stdout)
   !
   CALL pw_readfile('exx', ierr)
   !

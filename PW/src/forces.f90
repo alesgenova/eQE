@@ -36,7 +36,7 @@ SUBROUTINE forces()
   USE fft_base,      ONLY : dfftp
   USE fft_base,      ONLY : dfftl
   USE gvect,         ONLY : ngm, gstart, ngl, igtongl, g, gg, gcutm
-  USE gvecl,         ONLY : ngml => ngm, gstartl => gstart, ngll => ngl, nll => nl, &
+  USE gvecl,         ONLY : ngml => ngm, gstartl => gstart, ngll => ngl, &
                             igtongll => igtongl, gl => g, ggl => gg, gcutml => gcutm
   USE lsda_mod,      ONLY : nspin
   USE symme,         ONLY : symvector
@@ -120,17 +120,17 @@ SUBROUTINE forces()
   if (do_fde) then
      if (linterlock) then
         call force_lc_large( nat_fde, tau_fde, ityp_fde, alatl, omegal, ngml, ngll, igtongll, &
-                    gl, rho_fde_large%of_r, nll, fde_nspin, gstartl, gamma_only, vloc_large, &
+                    gl, rho_fde_large%of_r, dfftl%nl, fde_nspin, gstartl, gamma_only, vloc_large, &
                     forcelc_fde )
         call scatter_coordinates(forcelc_fde, forcelc)
      else
         call force_lc( nat, tau, ityp, alat, omega, ngm, ngl, igtongl, &
-                    g, rho_fde%of_r, nl, fde_nspin, gstart, gamma_only, vloc, &
+                    g, rho_fde%of_r, dfftp%nl, fde_nspin, gstart, gamma_only, vloc, &
                     forcelc )
      endif
   else
      CALL force_lc( nat, tau, ityp, alat, omega, ngm, ngl, igtongl, &
-                    g, rho%of_r, nl, nspin, gstart, gamma_only, vloc, &
+                    g, rho%of_r, dfftp%nl, nspin, gstart, gamma_only, vloc, &
                     forcelc )
   endif
   !
@@ -151,15 +151,14 @@ SUBROUTINE forces()
      if (linterlock) then
         call force_ew( alatl, nat_fde, ntyp, ityp_fde, zv, atl, bgl, tau_fde, omegal, gl, &
                  ggl, ngml, gstartl, gamma_only, gcutml, strf_fde_large, forceion_fde )
-     else
+      else
         call force_ew( alat, nat_fde, ntyp, ityp_fde, zv, at, bg, tau_fde, omega, g, &
                  gg, ngm, gstart, gamma_only, gcutm, strf_fde, forceion_fde )
-     endif
+      endif
      call scatter_coordinates(forceion_fde, forceion) 
   else
      CALL force_ew( alat, nat, ntyp, ityp, zv, at, bg, tau, omega, g, &
                  gg, ngm, gstart, gamma_only, gcutm, strf, forceion )
-  endif
   END IF
   !
   ! ... the semi-empirical dispersion correction

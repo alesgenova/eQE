@@ -71,7 +71,7 @@ module funct
   PUBLIC  :: dgcxc, dgcxc_spin
   PUBLIC  :: d3gcxc       
   PUBLIC  :: nlc
-  !PUBLIC  :: nlc_large
+  PUBLIC  :: nlc_large
   ! vector XC driver
   PUBLIC  :: evxc_t_vec, gcx_spin_vec
   !
@@ -2729,27 +2729,28 @@ subroutine nlc (rho_valence, rho_core, nspin, enl, vnl, v)
   return
 end subroutine nlc
 
-!subroutine nlc_large (rho_valence, rho_core, nspin, enl, vnl, v, inlc_l)
-!   !-----------------------------------------------------------------------
-!   !     non local correction for the correlation
-!   !
-!   !     input:  rho_valence, rho_core
-!   !     definition:  E_nl = \int E_nl(rho',grho',rho'',grho'',|r'-r''|) dr
-!   !     output: enl = E_nl
-!   !             vnl= D(E_x)/D(rho)
-!   !             v  = Correction to the potential
-!   !
+subroutine nlc_large (rho_valence, rho_core, nspin, enl, vnl, v)
+  !-----------------------------------------------------------------------
+  !     non local correction for the correlation
+  !
+  !     input:  rho_valence, rho_core
+  !     definition:  E_nl = \int E_nl(rho',grho',rho'',grho'',|r'-r''|) dr
+  !     output: enl = E_nl
+  !             vnl= D(E_x)/D(rho)
+  !             v  = Correction to the potential
+  !
 
 !   USE vdW_DF_large, ONLY: xc_vdW_DF_large, vdw_type_large
 !   USE rVV10_large,  ONLY: xc_rVV10_large
 
-!   implicit none
+  implicit none
 
-!   REAL(DP), INTENT(IN) :: rho_valence(:,:), rho_core(:)
-!   INTEGER, INTENT(IN)  :: nspin, inlc_l
-!   REAL(DP), INTENT(INOUT) :: v(:,:)
-!   REAL(DP), INTENT(INOUT) :: enl, vnl
+  REAL(DP), INTENT(IN) :: rho_valence(:,:), rho_core(:)
+  INTEGER, INTENT(IN)  :: nspin
+  REAL(DP), INTENT(INOUT) :: v(:,:)
+  REAL(DP), INTENT(INOUT) :: enl, vnl
 
+  call errore("Non-local funcionals are not yet implemented")
 !   inlc = inlc_l
 
 !   if (inlc == 1 .or. inlc == 2) then
@@ -2767,8 +2768,8 @@ end subroutine nlc
 !      v = 0._DP
 !   endif
 !   !
-!   return
-! end subroutine nlc_large
+  return
+end subroutine nlc_large
 
 !
 !-----------------------------------------------------------------------

@@ -35,6 +35,8 @@ SUBROUTINE hinit0()
   use ldaU,         ONLY : lda_plus_U, U_projection
   USE control_flags,ONLY : tqr, tq_smoothing, tbeta_smoothing
   USE io_global,    ONLY : stdout
+  USE scf,          ONLY : vltot
+  USE scf_large,    ONLY : vltot_large => vltot
   use fde,          only : do_fde, linterlock, fde_cell_offset, &
                             fde_cell_shift, frag_cell_split, &
                             nat_fde, tau_fde, ityp_fde, strf_fde, strf_fde_large, &
