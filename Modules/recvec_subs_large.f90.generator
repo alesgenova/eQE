@@ -11,6 +11,6 @@ USE constants,          ONLY : eps8
 !
 IMPLICIT NONE
 !
-!hack2018 ["gshells", "Modules/recvec_subs.f90"]
+!hack2018 ["gshells", "Modules/recvec_subs.f90", "subroutine"]
 
 END SUBROUTINE gshells_large

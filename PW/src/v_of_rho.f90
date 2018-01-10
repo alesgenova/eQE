@@ -39,8 +39,8 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
 
   use input_parameters, ONLY : fde_xc_funct, saop_add, saop_nadd
   use io_global, only : stdout
-#ifdef __SAOP
-  USE saop, only: v_rho_saop
+#if defined(__SAOP)
+  !USE saop, only: v_rho_saop
 #endif
   !
   IMPLICIT NONE
@@ -75,8 +75,8 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
     else
       if (saop_add) then
         write(stdout,*) "SAOP ADDITIVE"
-#ifdef __SAOP
-    call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
+#if defined(__SAOP)
+    !call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
 #else
     call errore('v_of_rho', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif
@@ -91,8 +91,8 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
     if ( conv_elec ) then
       if (saop_add) then
         write(stdout,*) "SAOP ADDITIVE CONV"
-#ifdef __SAOP
-        call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
+#if defined(__SAOP)
+        !call v_rho_saop(rho, rho_core, rhog_core, etxc, vtxc, v%of_r, reduced_cell, nspin_lsda)
 #else
       call errore('v_of_rho', "For SAOP, must compiled eQE with -D__SAOP flag", 1)
 #endif

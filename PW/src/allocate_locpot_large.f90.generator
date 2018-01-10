@@ -19,6 +19,6 @@ subroutine allocate_locpot_large
   USE fft_base , ONLY : dfftp => dfftl
   !
   implicit none
-  !hack2018 ["allocate_locpot", "PW/src/allocate_locpot.f90"]
+  !hack2018 ["allocate_locpot", "PW/src/allocate_locpot.f90", "subroutine"]
 end subroutine allocate_locpot_large
 

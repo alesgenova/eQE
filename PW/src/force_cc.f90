@@ -22,7 +22,7 @@ subroutine force_cc (forcecc)
   USE fft_base,             ONLY : dfftl
   USE fft_interfaces,       ONLY : fwfft
   USE gvect,                ONLY : ngm, gstart, g, gg, ngl, gl, igtongl
-  USE gvecl,                ONLY : ngml => ngm, nll => nl, g_large => g!, gg, ngl, gl, igtongl
+  USE gvecl,                ONLY : ngml => ngm, g_large => g!, gg, ngl, gl, igtongl
   USE ener,                 ONLY : etxc, vtxc
   USE lsda_mod,             ONLY : nspin
   USE scf,                  ONLY : rho, rho_core, rhog_core

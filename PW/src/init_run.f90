@@ -18,8 +18,8 @@ SUBROUTINE init_run()
   USE gvecs,              ONLY : gcutms, ngms
   USE cell_base,          ONLY : at, bg, set_h_ainv
   USE large_cell_base,    ONLY : atl => at, bgl => bg !, set_h_ainv
-  USE gvect,              ONLY : g_l=>g, gg_l=>gg, mill_l=>mill, gcutm_l=>gcutm, &
-          ig_l2g_l=>ig_l2g, ngm_l=>ngm, ngm_g_l=>ngm_g, gstart_l ! to be comunicated to the Solvers if gamma_only
+  USE gvecl,              ONLY : g_l=>g, gg_l=>gg, mill_l=>mill, gcutm_l=>gcutm, &
+          ig_l2g_l=>ig_l2g, ngm_l=>ngm, ngm_g_l=>ngm_g, gstart_l => gstart ! to be comunicated to the Solvers if gamma_only
   USE cellmd,             ONLY : lmovecell
   USE dynamics_module,    ONLY : allocate_dyn_vars
   USE paw_variables,      ONLY : okpaw
@@ -32,7 +32,6 @@ SUBROUTINE init_run()
   USE fft_base,           ONLY : dfftl
   USE funct,              ONLY : dft_is_hybrid
   USE recvec_subs,        ONLY : ggen, ggens
-  USE recvecl_subs,       ONLY : ggen_large
   USE wannier_new,        ONLY : use_wannier    
   USE dfunct,             ONLY : newd
   USE esm,                ONLY : do_comp_esm, esm_init

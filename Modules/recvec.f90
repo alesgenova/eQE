@@ -214,7 +214,7 @@
      ! nl  = fft index for G-vectors (with gamma tricks, only for G>)
      ! nlm = as above, for G< (used only with gamma tricks)
 
-     INTEGER, ALLOCATABLE :: nl(:), nlm(:)
+     !INTEGER, ALLOCATABLE :: nl(:), nlm(:)
 
      INTEGER :: gstart = 2 ! index of the first G vector whose module is > 0
                            ! Needed in parallel execution: gstart=2 for the
@@ -286,8 +286,8 @@
        ALLOCATE( gg(ngm) )
        ALLOCATE( g(3, ngm) )
        ALLOCATE( mill(3, ngm) )
-       ALLOCATE( nl (ngm) )
-       ALLOCATE( nlm(ngm) )
+       !ALLOCATE( nl (ngm) )
+       !ALLOCATE( nlm(ngm) )
        ALLOCATE( ig_l2g(ngm) )
        ALLOCATE( igtongl(ngm) )
        !
@@ -307,8 +307,8 @@
        IF( ALLOCATED( eigts1 ) ) DEALLOCATE( eigts1 )
        IF( ALLOCATED( eigts2 ) ) DEALLOCATE( eigts2 )
        IF( ALLOCATED( eigts3 ) ) DEALLOCATE( eigts3 )
-       IF( ALLOCATED( nl ) ) DEALLOCATE( nl )
-       IF( ALLOCATED( nlm ) ) DEALLOCATE( nlm )
+       !IF( ALLOCATED( nl ) ) DEALLOCATE( nl )
+       !IF( ALLOCATED( nlm ) ) DEALLOCATE( nlm )
      END SUBROUTINE deallocate_gvecl
 
 !=----------------------------------------------------------------------------=!

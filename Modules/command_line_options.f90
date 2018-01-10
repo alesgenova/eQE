@@ -40,6 +40,8 @@ MODULE command_line_options
   INTEGER :: nimage_= 1, npool_= 1, ndiag_ = 0, nband_= 1, ntg_= 1, nyfft_ = 1
   ! ... Indicate if using library init
   LOGICAL :: library_init = .FALSE.
+  ! ... FDE: disable fancy parallelization (fancy: mp_large = comm_world, nofancy: mp_large = intra_bgrp)
+  LOGICAL :: fancy_parallel_ = .true.
   ! ... input file name read from command line
   CHARACTER(LEN=256) :: input_file_ = ' '
   ! ... Command line arguments that were not identified and processed
@@ -149,6 +151,8 @@ CONTAINS
               ENDIF
               READ ( arg, *, ERR = 15, END = 15) ndiag_
               narg = narg + 1
+           CASE ( '-nfp' ) 
+              fancy_parallel_ = .false.
            CASE DEFAULT
               command_line = TRIM(command_line) // ' ' // TRIM(arg)
         END SELECT

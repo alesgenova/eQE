@@ -23,10 +23,12 @@ subroutine set_rhoc
   USE cell_base, ONLY : omega, tpiba2
   USE ener,      ONLY : etxcc
   USE fft_base,  ONLY : dfftp
-  USE fft_base,  ONLY : dfftl, grid_gather, grid_scatter, grid_scatter_large
+  USE fft_base,  ONLY : dfftl
+  use scatter_mod,  only : gather_grid, scatter_grid
   USE fft_interfaces,ONLY : invfft
   USE fft_interfaces,ONLY : fwfft
   USE gvect,     ONLY : ngm, ngl, gl, igtongl
+  use gvecl, only : ngml => ngm
   USE scf,       ONLY : rho_core, rhog_core, scf_type
   USE lsda_mod,  ONLY : nspin
   USE vlocal,    ONLY : strf
@@ -195,20 +197,20 @@ subroutine set_rhoc
         
         !     multiply by the structure factor and sum
         do ng = 1, ngm
-           aux(nl(ng)) = aux(nl(ng)) + strf(ng,nt) * rhocg(igtongl(ng))
+           aux(dfftp%nl(ng)) = aux(dfftp%nl(ng)) + strf(ng,nt) * rhocg(igtongl(ng))
         enddo
      enddo
 
      if (gamma_only) then
         do ng = 1, ngm
-           aux(nlm(ng)) = CONJG(aux(nl (ng)))
+           aux(dfftp%nlm(ng)) = CONJG(aux(dfftp%nl(ng)))
         end do
      end if
 
-     rhog_gauss(:) = aux(nl(:))
+     rhog_gauss(:) = aux(dfftp%nl(:))
 
      !   the core charge in real space
-     CALL invfft ('Dense', aux, dfftp)
+     CALL invfft ('Rho', aux, dfftp)
 
 
   !    test on the charge and computation of the core energy
@@ -276,7 +278,7 @@ subroutine set_rhoc
      !
      !
      ! gather rho_core_fde in the small grid in raux
-     call grid_gather(rho_core_fde, raux)
+     call gather_grid( dfftp,rho_core_fde, raux)
      !
      !
      !
@@ -307,29 +309,29 @@ subroutine set_rhoc
        !
        ! scatter rauxl on large grid, thus
        ! rho_core_fde_large is on large grid (scattered)
-       call grid_scatter_large(rauxl, rho_core_fde_large)
+       call scatter_grid( dfftl,rauxl, rho_core_fde_large)
        !
        !
        ! generate FFT of rho_core_fde_large
        ! scattered and on large grid g-space
        gauxl(:) = cmplx(rho_core_fde_large(:), 0.d0, kind=dp)
-       call fwfft ('Custom', gauxl, dfftl)
-       rhog_core_fde_large(1:ngml) = gauxl(nll(1:ngml))
+       call fwfft ('Rho', gauxl, dfftl)
+       rhog_core_fde_large(1:ngml) = gauxl(dfftl%nl(1:ngml))
        !
        ! scatter raux on small grid
-       call grid_scatter(raux, rho_core_fde)
+       call scatter_grid( dfftp,raux, rho_core_fde)
        !
        !
        ! generate FFT of rho_core_fde
        ! scattered and on small grid g-space
        gaux(:) = cmplx(rho_core_fde(:), 0.d0, kind=dp)
-       call fwfft ('Dense', gaux, dfftp)
-       rhog_core_fde(1:ngm) = gaux(nl(1:ngm))
+       call fwfft ('Rho', gaux, dfftp)
+       rhog_core_fde(1:ngm) = gaux(dfftp%nl(1:ngm))
        !
      else
        ! no linterlock
        if (ionode) call mp_sum(raux, inter_fragment_comm)
-       call grid_scatter(raux, rho_core_fde)
+       call scatter_grid( dfftp,raux, rho_core_fde)
        call c_grid_gather_sum_scatter(rhog_core_fde)
      endif
      !
@@ -338,7 +340,7 @@ subroutine set_rhoc
      rhog_gauss_fde(:) = rhog_gauss(:)
      rho_gauss_fde(:) = rho_gauss(:)
      !
-     call grid_gather(rho_gauss_fde, raux)
+     call gather_grid( dfftp,rho_gauss_fde, raux)
 
      if (linterlock) then
        if (ionode) then
@@ -349,19 +351,19 @@ subroutine set_rhoc
          raux(:) = rauxl(f2l(:))
        endif
        !
-       call grid_scatter_large(rauxl, rho_gauss_fde_large)
+       call scatter_grid( dfftl,rauxl, rho_gauss_fde_large)
        gauxl(:) = cmplx(rho_gauss_fde_large(:), 0.d0, kind=dp)
-       call fwfft ('Custom', gauxl, dfftl)
-       rhog_gauss_fde_large(1:ngml) = gauxl(nll(1:ngml))
+       call fwfft ('Rho', gauxl, dfftl)
+       rhog_gauss_fde_large(1:ngml) = gauxl(dfftl%nl(1:ngml))
        !
-       call grid_scatter(raux, rho_gauss_fde)
+       call scatter_grid( dfftp,raux, rho_gauss_fde)
        gaux(:) = cmplx(rho_gauss_fde(:), 0.d0, kind=dp)
-       call fwfft ('Dense', gaux, dfftp)
-       rhog_gauss_fde(1:ngm) = gaux(nl(1:ngm))
+       call fwfft ('Rho', gaux, dfftp)
+       rhog_gauss_fde(1:ngm) = gaux(dfftp%nl(1:ngm))
        !
      else
        if (ionode) call mp_sum(raux, inter_fragment_comm)
-       call grid_scatter(raux, rho_gauss_fde)
+       call scatter_grid( dfftp,raux, rho_gauss_fde)
        call c_grid_gather_sum_scatter(rhog_gauss_fde)
      endif
      !

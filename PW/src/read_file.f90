@@ -134,19 +134,17 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE fft_base,             ONLY : dfftp
   USE fft_base,             ONLY : dfftl, dffts
   USE fft_interfaces,       ONLY : fwfft
-  USE grid_subroutines,     ONLY : realspace_grids_init       !Hack2018
-  USE grid_subroutines,     ONLY : realspace_supergrid_init
   USE fft_types,            ONLY : fft_type_allocate
   USE recvec_subs,          ONLY : ggen, ggens
   USE gvect,                ONLY : gg, ngm, g, gcutm, mill, ngm_g, ig_l2g, &
-                                   eigts1, eigts2, eigts3, nl, gstart
+                                   eigts1, eigts2, eigts3, gstart
   USE gvecl,                ONLY : gg_l => gg, ngm_l => ngm, g_l => g, gcutm_l => gcutm, &
                                    eigts1_l => eigts1, eigts2_l => eigts2, eigts3_l => eigts3, &
                                    nl_l => nl, gstart_l => gstart, ig_l2g_l=>ig_l2g, &
                                    mill_l => mill
   USE Coul_cut_2D,          ONLY : do_cutoff_2D, cutoff_fact
   USE fft_base,             ONLY : dfftp, dffts
-  USE gvecs,                ONLY : ngms, nls, gcutms 
+  USE gvecs,                ONLY : ngms, gcutms 
   USE spin_orb,             ONLY : lspinorb, domag
   USE scf,                  ONLY : rho, rho_core, rhog_core, v
   USE scf,                  ONLY : vltot
@@ -163,7 +161,6 @@ SUBROUTINE read_xml_file_internal(withbs)
   USE paw_variables,        ONLY : okpaw, ddd_PAW
   USE paw_init,             ONLY : paw_init_onecenter, allocate_paw_internals
   USE ldaU,                 ONLY : lda_plus_u, eth, init_lda_plus_u
-  USE ldaU,                 ONLY : oatwfc
   USE control_flags,        ONLY : gamma_only
   USE funct,                ONLY : get_inlc, get_dft_name
   USE funct,                ONLY : dft_is_nonlocc
@@ -214,7 +211,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   CALL pw_readfile( 'dim',   ierr )
   CALL errore( 'read_xml_file ', 'problem reading file ' // &
              & TRIM( tmp_dir ) // TRIM( prefix ) // '.save', ierr )
-  CALL flush_unit(stdout)
+  flush(stdout)
   !
   ! ... allocate space for atomic positions, symmetries, forces
   !
@@ -237,6 +234,7 @@ SUBROUTINE read_xml_file_internal(withbs)
   CALL set_dimensions()
   CALL fft_type_allocate ( dfftp, at, bg, gcutm, intra_bgrp_comm, nyfft=nyfft )
   CALL fft_type_allocate ( dffts, at, bg, gcutms, intra_bgrp_comm, nyfft=nyfft )
+  if (do_fde) CALL fft_type_allocate ( dfftl, atl, bgl, gcutml, intra_lgrp_comm, nyfft=1 )
   !
   ! ... check whether LSDA
   !
@@ -270,14 +268,6 @@ SUBROUTINE read_xml_file_internal(withbs)
   !
   IF  ( withbs .EQV. .TRUE. ) THEN  
      CALL pw_readfile( 'nowave', ierr )
-     if (do_fde.and..not.linterlock) deallocate(tau_large)
-     CALL set_dimensions()
-     if (do_fde) then
-        call realspace_supergrid_init&
-        ( dfftl, dfftp, atl, bgl, gcutml, frag_cell_split, fde_frag_split_type, fde_max_divisor, fde_split_types )
-     endif
-! repeat second time just in case
-  CALL realspace_grids_init ( dfftp, dffts, at, bg, gcutm, gcutms )
   ELSE
      CALL pw_readfile( 'nowavenobs', ierr )
   END IF
@@ -421,20 +411,11 @@ SUBROUTINE read_xml_file_internal(withbs)
                    dfftp%nr3, strf, eigts1, eigts2, eigts3 )
 ! this part copies from hinit0, where it's between struc_fact and setlocal
   if (do_fde ) then 
-     strf_fde(:,:) = strf(:,:)
-     !
-     if (linterlock) then
-        CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
-                   dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
-        call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
-        call setlocal_fde_large(vltot_large, strf_fde_large)
-     else 
-!        CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngm, g, bg, &
-!              dfftp%nr1, dfftp%nr2, dfftp%nr3, strf_fde, eigts1, eigts2, eigts3 )
-        do nt = 1, nsp
-            call c_grid_gather_sum_scatter( strf_fde(:,nt) )
-        end do
-     endif
+    !strf_fde(:,:) = strf(:,:)
+    CALL struc_fact( nat_fde, tau_fde, nsp, ityp_fde, ngml, gl, bgl, &
+          dfftl%nr1, dfftl%nr2, dfftl%nr3, strf_fde_large, eigts1l, eigts2l, eigts3l )
+    call calc_f2l(f2l, dfftp, dfftl, fde_cell_shift, fde_cell_offset)
+    call setlocal_fde_large(vltot_large, strf_fde_large)
   endif
 ! END: this part copies from hinit0, where it's between struc_fact and setlocal
   CALL setlocal()
@@ -447,13 +428,13 @@ SUBROUTINE read_xml_file_internal(withbs)
      !
      psic(:) = rho%of_r(:,is)
      CALL fwfft ('Rho', psic, dfftp)
-     rho%of_g(:,is) = psic(nl(:))
+     rho%of_g(:,is) = psic(dfftp%nl(:))
      !
   END DO
   if (do_fde) call update_rho_fde(rho, .true.)
   !
   ! ... read info needed for hybrid functionals
-  call flush_unit(stdout)
+  flush(stdout)
   !
   CALL pw_readfile('exx', ierr)
   !

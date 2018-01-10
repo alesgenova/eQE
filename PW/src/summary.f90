@@ -101,7 +101,7 @@ SUBROUTINE summary()
   IF ( title /= ' ') WRITE( stdout, "(/,5X,'Title: ',/,5X,A75)" ) title
   !
   WRITE( stdout, 100) ibrav, alat, omega, nat, ntyp
-  if ( do_fde .and. linterlock ) WRITE( stdout, 105) ibravl, alatl, omegal
+  if ( do_fde .and. linterlock ) WRITE( stdout, 107) ibravl, alatl, omegal
   IF ( two_fermi_energies ) THEN
      WRITE( stdout, 101) nelec, nelup, neldw
   ELSE
@@ -131,7 +131,7 @@ SUBROUTINE summary()
        &     'convergence threshold     = ',1PE12.1,/,5X, &
        &     'mixing beta               = ',0PF12.4,/,5X, &
        &     'number of iterations used = ',I12,2X,A,' mixing')
-105 FORMAT( /,/,X, &
+107 FORMAT( /,/,X, &
        &     'Large bravais-lattice index     = ',I12,/,X, &
        &     'Large lattice parameter (alat)  = ',F12.4,'  a.u.',/,X, &
        &     'Large unit-cell volume          = ',F12.4,' (a.u.)^3')

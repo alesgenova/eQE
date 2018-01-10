@@ -114,7 +114,7 @@ SUBROUTINE iosys()
   USE fft_base, ONLY : dffts
   USE fft_base, ONLY : dfftl
   !
-  USE klist,         ONLY : ltetra, lgauss, ngauss, two_fermi_energies, &     !hack2018
+  USE klist,         ONLY : ltetra, lgauss, ngauss, &     !hack2018
                             smearing_          => smearing, &
                             degauss_           => degauss, &
                             tot_charge_        => tot_charge, &

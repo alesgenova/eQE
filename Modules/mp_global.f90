@@ -27,6 +27,7 @@ MODULE mp_global
   USE mp_diag
   USE mp_large
   USE mp_orthopools
+  use mp_large
   !
   IMPLICIT NONE 
   SAVE
@@ -44,7 +45,7 @@ MODULE mp_global
 CONTAINS
   !
   !-----------------------------------------------------------------------
-  SUBROUTINE mp_startup ( my_world_comm, start_images, diag_in_band_group, what_band_group )
+  SUBROUTINE mp_startup ( my_world_comm, start_images, diag_in_band_group, what_band_group, start_fragments )
     !-----------------------------------------------------------------------
     ! ... This wrapper subroutine initializes all parallelization levels.
     ! ... If option with_images=.true., processes are organized into images,
@@ -59,6 +60,7 @@ CONTAINS
     !
     USE command_line_options, ONLY : get_command_line, &
         nimage_, npool_, ndiag_, nband_, ntg_, nyfft_
+    USE command_line_options, ONLY : fancy_parallel_
     USE parallel_include
     !
     IMPLICIT NONE
@@ -66,11 +68,14 @@ CONTAINS
     LOGICAL, INTENT(IN), OPTIONAL :: start_images
     LOGICAL, INTENT(IN), OPTIONAL :: diag_in_band_group
     INTEGER, INTENT(IN), OPTIONAL :: what_band_group
+    LOGICAL, INTENT(IN), OPTIONAL :: start_fragments
     LOGICAL :: do_images
     LOGICAL :: do_diag_in_band
     INTEGER :: my_comm
     INTEGER :: what_band_group_
     LOGICAL :: do_distr_diag_inside_bgrp
+    LOGICAL :: do_fragments  ! Initialize fragments in a FDE calculation
+    LOGICAL :: do_fancy_parallel  ! Use alessandro's fancy parallelization. Not combinable with some options in TDDFT.
     !
     my_comm = MPI_COMM_WORLD
     IF ( PRESENT(my_world_comm) ) my_comm = my_world_comm
@@ -83,10 +88,25 @@ CONTAINS
     CALL mp_world_start( my_comm )
     CALL get_command_line ( )
     !
+    ! Foundamental empty write statement to prevent pp.x from crashing. Not a good sign.
+    !write(stdout,*) ' '
+    !flush(stdout)
+    !
     do_images = .FALSE.
     IF ( PRESENT(start_images) ) do_images = start_images
+    !
+    do_fragments = .FALSE.
+    IF ( PRESENT(start_fragments) ) do_fragments = start_fragments
+    if ( do_fragments ) then
+      do_fancy_parallel = fancy_parallel_
+    else
+      do_fancy_parallel = .false.
+    endif
+    !
     IF ( do_images ) THEN
        CALL mp_start_images ( nimage_, world_comm )
+    ELSE IF ( do_fragments ) THEN
+       CALL mp_start_fragments ( nimage_, world_comm )
     ELSE
        CALL mp_init_image ( world_comm  )
     END IF
@@ -97,6 +117,11 @@ CONTAINS
     ! CALL mp_start_orthopools ( intra_image_comm )
     CALL mp_start_bands ( nband_, ntg_, nyfft_, intra_pool_comm )
     CALL mp_start_exx ( nband_, ntg_, intra_pool_comm )
+    if (do_fancy_parallel) then
+      call mp_start_large( world_comm )
+    else
+      call mp_start_large( intra_pool_comm )
+    endif
     !
     do_diag_in_band = .FALSE.
     IF ( PRESENT(diag_in_band_group) ) do_diag_in_band = diag_in_band_group

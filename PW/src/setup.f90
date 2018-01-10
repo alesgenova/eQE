@@ -47,8 +47,7 @@ SUBROUTINE setup()
   USE gvecw,              ONLY : gcutw, ecutwfc
   USE fft_base,           ONLY : dfftp
   USE fft_base,           ONLY : dffts
-  USE fft_base,           ONLY : dfftl
-  USE grid_subroutines,   ONLY : realspace_grids_init, realspace_supergrid_init
+  USE fft_base,           ONLY : dfftl, smap_large
   USE fft_types,          ONLY : fft_type_init, fft_type_allocate
   USE fft_base,           ONLY : smap
   USE gvecs,              ONLY : doublegrid, gcutms, dual
@@ -461,9 +460,11 @@ SUBROUTINE setup()
   !write(stdout,*)'before realspace_supergrid_init'
   !write(stdout,*)'dfftp',dfftp%nr1,dfftp%nr2,dfftp%nr3
   !write(stdout,*)'dffts',dffts%nr1,dffts%nr2,dffts%nr3
-  if (do_fde .and. linterlock) then
-      call realspace_supergrid_init&
-        ( dfftl, dfftp, atl, bgl, gcutml, frag_cell_split, fde_frag_split_type, fde_max_divisor, fde_split_types )
+  if (do_fde .and. linterlock .and. .false.) then
+      ! AG: TODO, figure out what is the replacement to realspace_grid_init
+      ! the subroutine data_structure is probably a good start
+      !call realspace_supergrid_init&
+      !  ( dfftl, dfftp, atl, bgl, gcutml, frag_cell_split, fde_frag_split_type, fde_max_divisor, fde_split_types )
 
      at(:,1) = atl(:,1) *(frag_cell_split(1))
      at(:,2) = atl(:,2) *(frag_cell_split(2))

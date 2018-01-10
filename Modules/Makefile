@@ -3,12 +3,15 @@
 include ../make.inc
 
 # location of needed modules
-MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../ELPA/src $(MOD_FLAG)../FFTXlib $(MOD_FLAG)../LAXlib $(MOD_FLAG)../UtilXlib \
-          $(MOD_FLAG)../KS_Solvers/CG $(IFLAGS) $(MOD_FLAG).
+MODFLAGS=$(BASEMOD_FLAGS) \
+         $(MOD_FLAG)../ELPA/src
 
 # list of modules
 
 MODULES = \
+cell_base_large.o \
+mp_large.o \
+recvec_subs_large.o \
 atom.o \
 autopilot.o \
 basic_algebra_routines.o \

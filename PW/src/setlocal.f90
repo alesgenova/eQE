@@ -62,14 +62,14 @@ SUBROUTINE setlocal
   if (do_fde .and. .not. fde_init_rho) then
      do nt = 1, ntyp
         do ng = 1, ngm
-           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf_fde (ng, nt)
+            aux (dfftp%nl(ng))=aux(dfftp%nl(ng)) + vloc (igtongl (ng), nt) * strf_fde (ng, nt)
 !           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
         enddo
      enddo
   else
      do nt = 1, ntyp
         do ng = 1, ngm
-           aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
+            aux (dfftp%nl(ng))=aux(dfftp%nl(ng)) + vloc (igtongl (ng), nt) * strf (ng, nt)
         enddo
      enddo
   endif
