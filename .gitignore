@@ -15,4 +15,5 @@ install/config.status
 install/configure.msg
 Modules/version.f90
 S3DE
-
+LAPACK
+lapack*
