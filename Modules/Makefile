@@ -38,6 +38,7 @@ fsockets.o \
 funct.o \
 generate_function.o \
 gth.o \
+gradutils.o \
 gvecw.o \
 input_parameters.o \
 invmat.o \

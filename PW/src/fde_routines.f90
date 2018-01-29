@@ -1056,11 +1056,14 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
 
      ! compute \nabla\rho
 
-     if (llarge) then
-       call gradrho_large(dfftp%nnr, rhogsum, ngm, g, nl, grho)
-     else
-       call gradrho(dfftp%nnr, rhogsum, ngm, g, nl, grho)
-     endif
+     !if (llarge) then
+     !  call gradrho_large(dfftp%nnr, rhogsum, ngm, g, nl, grho)
+     !else
+     !  call gradrho(dfftp%nnr, rhogsum, ngm, g, nl, grho)
+     !endif
+     call fft_gradient_g2r(dfftp, rhogsum, g, grho)
+
+
      !if ( fde_regrho ) call GradRegularRho(rhoout,grho,rho%is_fde)
 
      mod_grho(:) = sqrt(grho(1,:)**2 + grho(2,:)**2 + grho(3,:)**2)
@@ -1110,11 +1113,13 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
      enddo
 !$omp end parallel do
 
-     if (llarge) then
-       call grad_dot_large(dfftp%nnr, prodotto, ngm, g, nl, alat, dprodotto)
-     else
-       call grad_dot(dfftp%nnr, prodotto, ngm, g, nl, alat, dprodotto)
-     endif
+     !if (llarge) then
+     !  call grad_dot_large(dfftp%nnr, prodotto, ngm, g, nl, alat, dprodotto)
+     !else
+     !  call grad_dot(dfftp%nnr, prodotto, ngm, g, nl, alat, dprodotto)
+     !endif
+
+     call fft_graddot(dfftp, rhogsum, g, grho)
 
      v(:,ispin) = fac**(-5.d0/3.d0) * (5.d0/3.d0) * Cf * abs(rhoout)**(2.d0/3.d0) * Fs - &
                   fac**(-5.d0/3.d0) * (4.d0/3.d0) * Cf * abs(rhoout)**(2.d0/3.d0) * s * dF_ds - &
@@ -2531,7 +2536,9 @@ SUBROUTINE fde_plot_gradrho
 
       grho = 0.d0
 
-      call gradrho( dfftp%nnr, rho%of_g(:,1), ngm, g, dfftp%nl, grho )
+      !call gradrho( dfftp%nnr, rho%of_g(:,1), ngm, g, dfftp%nl, grho )
+      call fft_gradient_g2r(dfftp, rho%of_g(:,1), g, grho)
+      
 
       do ipol = 1, 3
         if ( ipol == 1 ) then
@@ -2561,7 +2568,8 @@ SUBROUTINE fde_plot_gradrho
   if (linterlock) then
      allocate( grho_large(3,dfftl%nnr) )
      grho_large = 0.d0
-     call gradrho_large( dfftl%nnr, rho_fde_large%of_g(:,1), ngm_l, g_l, dfftl%nl, grho_large )
+     !call gradrho_large( dfftl%nnr, rho_fde_large%of_g(:,1), ngm_l, g_l, dfftl%nl, grho_large )
+     call fft_gradient_g2r(dfftl, rho_fde_large%of_g(:,1), g_l, grho_large)
      if (ionode) allocate(rauxl(dfftl%nr1x*dfftl%nr2x*dfftl%nr3x))
      do ipol = 1, 3
         if ( ipol == 1 ) then
@@ -2590,7 +2598,8 @@ SUBROUTINE fde_plot_gradrho
       if ( currfrag == frag_to_plot ) then
           grho = 0.d0
 
-          call gradrho( dfftp%nnr, rho_fde%of_g(:,1), ngm, g, dfftp%nl, grho )
+          !call gradrho( dfftp%nnr, rho_fde%of_g(:,1), ngm, g, dfftp%nl, grho )
+          call fft_gradient_g2r(dfftp, rho_fde%of_g(:,1), g, grho)
 
           do ipol = 1, 3
             if ( ipol == 1 ) then
