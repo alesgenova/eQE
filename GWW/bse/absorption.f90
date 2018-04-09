@@ -87,7 +87,7 @@ enddo
 !   write(stdout,*) 'ikstart=',ikstart
 !endif
 
-!flush( stdout )
+!call flush_unit( stdout )
 !call mp_barrier
 
 
@@ -119,7 +119,7 @@ do iz=1,fc%dfftt%my_nr3p
 !             rr(3)= dble(iz-1+ikstart-1)/dble(fc%nr3t)-int(2.d0*dble(iz-1+ikstart-1)/dble(fc%nr3t))
 !             write(stdout,*) 'rr',rr(1),rr(2),rr(3) 
 !             write(stdout,*) 'rc',r(1),r(2),r(3)
-!             flush( stdout )   
+!             CALL flush_unit( stdout )   
 !          endif
 
           rdote=r(1)*r_pola(1)+r(2)*r_pola(2)+r(3)*r_pola(3)   
@@ -147,7 +147,7 @@ enddo
 !      rr(3)=(dble((ik)-1)/dble(iktotal)-int(2.d0*dble((ik)-1)/dble(iktotal)))
 !      write(stdout,*) 'rr',rr(1),rr(2),rr(3) 
 !      write(stdout,*) 'rc',r(1),r(2),r(3)
-!      flush( stdout )   
+!      CALL flush_unit( stdout )   
 !   endif
 !
 !   rdote=r(1)*r_pola(1)+r(2)*r_pola(2)+r(3)*r_pola(3)   
@@ -168,7 +168,7 @@ allocate(rpsiv%a(rpsiv%npw,rpsiv%numb_v))
 !if (debug) then
 !   call mp_barrier
 !   write(stdout,*) 'rpsiv allocated'
-!   flush( stdout )   
+!   CALL flush_unit( stdout )   
 !endif
 
 call fftback_a_exc(rpsiv_r,fc,rpsiv)
@@ -176,7 +176,7 @@ call fftback_a_exc(rpsiv_r,fc,rpsiv)
 !if (debug) then
 !   call mp_barrier
 !   write(stdout,*) 'fft_performed'
-!   flush( stdout )   
+!   CALL flush_unit( stdout )   
 !endif
 
 
@@ -195,7 +195,7 @@ ampl=ampl*ampl
 !if (debug) then
 !   call mp_barrier
 !   write(stdout,*) 'amplitude computed'
-!   flush( stdout )   
+!   CALL flush_unit( stdout )   
 !endif
 
 FLUSH( stdout )   

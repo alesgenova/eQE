@@ -35,7 +35,6 @@ SUBROUTINE data_structure( gamma_only )
   IMPLICIT NONE
   LOGICAL, INTENT(in) :: gamma_only
   INTEGER :: ik, ngm_, ngs_
-  INTEGER :: ngw_, ngml_, ngsl_, ngwl_
   LOGICAL :: lpara
   !
   lpara =  ( nproc_bgrp > 1 )

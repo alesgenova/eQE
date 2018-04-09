@@ -36,7 +36,6 @@ PROGRAM pwscf
   !!
   USE environment,       ONLY : environment_start
   USE mp_global,         ONLY : mp_startup
-  USE io_global,         ONLY : ionode, ionode_id, stdout
   USE read_input,        ONLY : read_input_file
   USE command_line_options, ONLY: input_file_, command_line
   !
@@ -46,8 +45,6 @@ PROGRAM pwscf
   CHARACTER(len=256) :: get_server_address
   !! Get the address of the server 
   INTEGER :: exit_status
-  logical :: opnd
-  character(len=256) :: filin, filout
   !! Status at exit
   LOGICAL :: use_images
   !! true if running "manypw.x"
@@ -56,21 +53,6 @@ PROGRAM pwscf
   !
   CALL mp_startup ( start_images=.true., diag_in_band_group = .true. )
   CALL environment_start ( 'PWSCF' )
-  ! open input files
-  if ( trim (input_file_) == ' ') then
-    filin = 'pw' //  '.in'
-  else
-    filin = trim(input_file_) // '.in'
-  end if
-  ! open output file
-  if (ionode) then
-    inquire(unit=stdout, opened=opnd)
-    if (opnd) close(unit=stdout)
-    filout = 'pw' //  '.out'
-    if (trim(input_file_) /= ' ') &
-        filout = trim(input_file_) //  '.out'
-    open(unit=stdout, file=trim(filout), status='unknown')
-  end if
   !
   ! ... Check if running standalone or in "driver" mode
   !
@@ -91,7 +73,7 @@ PROGRAM pwscf
        !
      ELSE
        ! as pw.x
-       CALL read_input_file ('PW',input_file_=filin  )
+       CALL read_input_file ('PW', input_file_ )
        CALL run_pwscf ( exit_status )
        !
        !
@@ -99,7 +81,7 @@ PROGRAM pwscf
   ELSE
   ! When running as library
      !
-     CALL read_input_file ('PW+iPi',input_file_=filin )
+     CALL read_input_file ('PW+iPi', input_file_ )
      CALL run_driver ( srvaddress, exit_status )
      !
   END IF

@@ -323,10 +323,9 @@ MODULE input_parameters
         REAL(DP):: tot_charge = 0.0_DP
           ! total system charge
 
-        REAL(DP) :: tot_magnetization = 0._DP
+        REAL(DP) :: tot_magnetization = -1.0_DP
           ! majority - minority spin.
           ! A value < 0 means unspecified
-        LOGICAL :: two_fermi_energies = .false.
 
         REAL(DP) :: ecutwfc = 0.0_DP
           ! energy cutoff for wave functions in k-space ( in Rydberg )
@@ -442,7 +441,7 @@ MODULE input_parameters
         REAL(DP) :: conv_thr_multi = 0.1_DP
         REAL(DP) :: ecutfock = -1.d0
           ! variables used in Lin Lin's ACE and SCDM
-        REAL(DP) :: localization_thr = 0.0_dp, scdmden=0.10d0, scdmgrd=0.20d0
+        REAL(DP) :: localization_thr = 0.0_dp, scdmden=1.0d0, scdmgrd=1.0d0
         INTEGER  :: n_proj  = 0
         LOGICAL  :: scdm=.FALSE.
         LOGICAL  :: ace=.TRUE.
@@ -652,6 +651,8 @@ MODULE input_parameters
           ! in rhombohedral axes. If .FALSE. in hexagonal axes, that are
           ! converted internally in rhombohedral axes.  
           !
+
+
         NAMELIST / system / ibrav, celldm, a, b, c, cosab, cosac, cosbc, nat, &
              ntyp, nbnd, ecutwfc, ecutrho, nr1, nr2, nr3, nr1s, nr2s,         &
              nr3s, nr1b, nr2b, nr3b, nosym, nosym_evc, noinv, use_all_frac,   &
@@ -671,7 +672,6 @@ MODULE input_parameters
              constrained_magnetization, B_field, fixed_magnetization,         &
              sic, sic_epsilon, force_pairing, sic_alpha,                      &
              tot_charge, tot_magnetization, spline_ps, one_atom_occupations,  &
-             two_fermi_energies,                                              &
              vdw_corr, london, london_s6, london_rcut, london_c6, london_rvdw,&
              dftd3_s6, dftd3_rs6, dftd3_s18, dftd3_rs18, dftd3_alp,           &
              dftd3_version,                                                   &

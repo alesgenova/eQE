@@ -119,7 +119,7 @@ MODULE parser
   !
   !
   !--------------------------------------------------------------------------
-  SUBROUTINE read_line( line, nfield, field, end_of_file, error, ionode_only )
+  SUBROUTINE read_line( line, nfield, field, end_of_file, error )
     !--------------------------------------------------------------------------
     !
     USE mp,        ONLY : mp_bcast
@@ -132,13 +132,7 @@ MODULE parser
     CHARACTER(LEN=*), OPTIONAL, INTENT(IN)  :: field
     INTEGER,          OPTIONAL, INTENT(IN)  :: nfield
     LOGICAL,          OPTIONAL, INTENT(OUT) :: end_of_file, error
-    LOGICAL,          OPTIONAL              :: ionode_only
     LOGICAL                                 :: tend, terr
-    LOGICAL                                 :: tio
-    !
-    !
-    tio=.false.
-    if (PRESENT(ionode_only)) tio=ionode_only
     !
     !
     IF( LEN( line ) < 256 ) THEN
@@ -157,11 +151,9 @@ MODULE parser
 20     CONTINUE
     END IF
     !
-    if (.not.tio) then
     CALL mp_bcast( tend, ionode_id, intra_image_comm )
     CALL mp_bcast( terr, ionode_id, intra_image_comm )
     CALL mp_bcast( line, ionode_id, intra_image_comm )
-    endif
     !
     IF( PRESENT(end_of_file) ) THEN
        end_of_file = tend

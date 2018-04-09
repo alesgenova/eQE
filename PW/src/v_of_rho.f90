@@ -180,7 +180,6 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   USE scf,              ONLY : scf_type
   USE mp,               ONLY : mp_sum
   USE mp_bands,         ONLY : intra_bgrp_comm
-  use control_flags,    only : iverbosity
   !
   IMPLICIT NONE
   !
@@ -371,7 +370,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   rhoneg(:) = rhoneg(:) * omega / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 )
   !
   if ((rhoneg(1) > eps8) .or. (rhoneg(2) > eps8)) then
-    if (iverbosity>10) write (stdout, '(/,5x, "negative rho (up,down): ", 2es10.3)') rhoneg(:)
+    write (stdout, '(/,5x, "negative rho (up,down): ", 2es10.3)') rhoneg(:)
   end if
   !
   vtxc = omega * vtxc / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 ) 
@@ -404,9 +403,9 @@ SUBROUTINE v_xc( rho, rho_core, rhog_core, etxc, vtxc, v )
   USE spin_orb,         ONLY : domag
   USE funct,            ONLY : xc, xc_spin, nlc, dft_is_nonlocc
   USE scf,              ONLY : scf_type
-  USE mp_global,        ONLY : intra_pool_comm, intra_bgrp_comm
+  USE mp_bands,         ONLY : intra_bgrp_comm
   USE mp,               ONLY : mp_sum
-  use control_flags,    only : iverbosity
+
   !
   IMPLICIT NONE
   !
@@ -565,7 +564,7 @@ SUBROUTINE v_xc( rho, rho_core, rhog_core, etxc, vtxc, v )
   !
   rhoneg(:) = rhoneg(:) * omega / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 )
   !
-  IF ( rhoneg(1) > eps8 .OR. rhoneg(2) > eps8 .and. iverbosity>10) &
+  IF ( rhoneg(1) > eps8 .OR. rhoneg(2) > eps8 ) &
      WRITE( stdout,'(/,5X,"negative rho (up, down): ",2ES10.3)') rhoneg
   !
   ! ... energy terms, local-density contribution

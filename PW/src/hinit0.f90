@@ -46,8 +46,9 @@ use fde_routines
   IMPLICIT NONE
   !
   INTEGER :: ik                 ! counter on k points
-  integer :: nt
   REAL(dp), ALLOCATABLE :: gk(:) ! work space
+  !
+  CALL start_clock( 'hinit0' )
   !
   ! ... calculate the Fourier coefficients of the local part of the PP
   !
@@ -122,6 +123,8 @@ use fde_routines
    call init_realspace_vars()
    write(stdout,'(5X,"Real space initialisation completed")')    
   endif
+  !
+  CALL stop_clock( 'hinit0' )
   !
   RETURN
   !

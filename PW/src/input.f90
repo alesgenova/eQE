@@ -6,11 +6,6 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !----------------------------------------------------------------------------
-! TB
-! included gate related stuff, search for 'TB'
-!----------------------------------------------------------------------------
-!
-!----------------------------------------------------------------------------
 SUBROUTINE iosys()
   !-----------------------------------------------------------------------------
   !
@@ -23,7 +18,6 @@ SUBROUTINE iosys()
   USE funct,         ONLY : dft_is_hybrid, dft_has_finite_size_correction, &
                             set_finite_size_volume, get_inlc, get_dft_short
   USE funct,         ONLY: set_exx_fraction, set_screening_parameter
-  USE funct,         ONLY: dft_is_nonlocc
   USE control_flags, ONLY: adapt_thr, tr2_init, tr2_multi
   USE constants,     ONLY : autoev, eV_to_kelvin, pi, rytoev, &
                             ry_kbar, amu_ry, bohr_radius_angs, eps8
@@ -143,14 +137,14 @@ SUBROUTINE iosys()
   !
   USE a2F,           ONLY : la2F_ => la2F
   !
-  USE exx,           ONLY : x_gamma_extrapolation_ => x_gamma_extrapolation, &
+  USE exx_base,      ONLY : x_gamma_extrapolation_ => x_gamma_extrapolation, &
                             nqx1_ => nq1, &
                             nqx2_ => nq2, &
                             nqx3_ => nq3, &
                             exxdiv_treatment_ => exxdiv_treatment, &
                             yukawa_           => yukawa, &
-                            ecutvcut_         => ecutvcut, &
-                            ecutfock_         => ecutfock, &
+                            ecutvcut_         => ecutvcut
+  USE exx,          ONLY:   ecutfock_         => ecutfock, &
                             use_ace, nbndproj, local_thr 
   USE loc_scdm,      ONLY : use_scdm, scdm_den, scdm_grd 
   !
@@ -741,13 +735,11 @@ SUBROUTINE iosys()
                           &noncol. magnetism, use lda_plus_u_kind = 1', 1)
   END IF
   !
-  !two_fermi_energies = ( tot_magnetization /= -1._DP)
+  two_fermi_energies = ( tot_magnetization /= -1._DP)
   IF ( two_fermi_energies .and. tot_magnetization < 0._DP) &
      CALL errore( 'iosys', 'tot_magnetization only takes positive values', 1 )
   IF ( two_fermi_energies .and. .not. lsda ) &
      CALL errore( 'iosys', 'tot_magnetization requires nspin=2', 1 )
-  IF (( tot_magnetization /= -1._DP).and.(nspin==2).and..not.two_fermi_energies) &
-       write(stdout,*) "  WARNING: two_fermi_energies = .true. in the input file. "  
   !
   IF ( occupations == 'fixed' .and. lsda  .and. lscf ) THEN
      !
@@ -1416,7 +1408,6 @@ endif
   !
   tot_charge_        = tot_charge
   tot_magnetization_ = tot_magnetization
-  two_fermi_energies_ = two_fermi_energies
   !
   lspinorb_ = lspinorb
   lforcet_ = lforcet
@@ -1913,7 +1904,8 @@ endif
   !if (trim(fde_xc_funct) /= 'SAME' .and. inlc .ne. 0) inlc = 0
   endif
   vdw_table_name_  = vdw_table_name
-  
+  inlc = get_inlc()
+  IF (inlc > 0) CALL initialize_kernel_table(inlc)
   !
   ! ... if DFT finite size corrections are needed, define the appropriate volume
   !

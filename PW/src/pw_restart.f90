@@ -41,14 +41,15 @@ MODULE pw_restart
                           qexml_read_bands_info, qexml_read_bands_pw, qexml_read_symmetry, &
                           qexml_read_efield, qexml_read_para, qexml_read_exx, qexml_read_esm
   !
-  USE xml_io_base, ONLY : rho_binary,read_wfc, write_wfc, create_directory
+  USE xml_io_base, ONLY : rho_binary,read_wfc, write_wfc
   !
   !
   USE kinds,     ONLY : DP
   USE constants, ONLY : e2, PI
   !
   USE io_files,  ONLY : tmp_dir, prefix, iunpun, xmlpun, delete_if_present, &
-                        qexml_version, qexml_version_init, pseudo_dir
+                        qexml_version, qexml_version_init, pseudo_dir,      &
+                        create_directory
   !
   USE io_global, ONLY : ionode, ionode_id
   USE mp_images, ONLY : intra_image_comm
@@ -150,8 +151,9 @@ MODULE pw_restart
       USE funct,                ONLY : get_exx_fraction, dft_is_hybrid, &
                                        get_gau_parameter, &
                                        get_screening_parameter, exx_is_active
-      USE exx,                  ONLY : x_gamma_extrapolation, nq1, nq2, nq3, &
-                                       exxdiv_treatment, yukawa, ecutvcut, ecutfock
+      USE exx_base,             ONLY : x_gamma_extrapolation, nq1, nq2, nq3, &
+                                       exxdiv_treatment, yukawa, ecutvcut 
+      USE exx,                   ONLY:  ecutfock
       USE cellmd,               ONLY : lmovecell, cell_factor 
       USE martyna_tuckerman,    ONLY : do_comp_mt
       USE esm,                  ONLY : do_comp_esm, esm_nfit, esm_efield, esm_w, &
@@ -840,7 +842,6 @@ MODULE pw_restart
       USE lsda_mod,      ONLY : nspin
       USE mp_bands,      ONLY : intra_bgrp_comm
       USE mp,            ONLY : mp_sum
-      use io_global, only : stdout     
       !
       IMPLICIT NONE
       !
@@ -1218,7 +1219,6 @@ MODULE pw_restart
       !
       ! ... this routine reads the format version of the current xml datafile
       !
-      use io_global, only : stdout
       IMPLICIT NONE
       !
       INTEGER,          INTENT(OUT) :: ierr
@@ -2828,8 +2828,9 @@ MODULE pw_restart
       !
       USE funct,                ONLY : set_exx_fraction, set_screening_parameter, &
                                        set_gau_parameter, enforce_input_dft, start_exx
-      USE exx,                  ONLY : x_gamma_extrapolation, nq1, nq2, nq3, &
-                                       exxdiv_treatment, yukawa, ecutvcut, ecutfock
+      USE exx_base,             ONLY : x_gamma_extrapolation, nq1, nq2, nq3, &
+                                       exxdiv_treatment, yukawa, ecutvcut 
+      USE exx,                  ONLY : ecutfock
       IMPLICIT NONE
       !
       INTEGER,          INTENT(OUT) :: ierr

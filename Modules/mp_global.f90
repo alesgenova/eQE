@@ -25,7 +25,6 @@ MODULE mp_global
   USE mp_bands_TDDFPT
   USE mp_exx
   USE mp_diag
-  USE mp_large
   USE mp_orthopools
   use mp_large
   !

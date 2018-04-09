@@ -252,7 +252,6 @@ MODULE ener
        etxc,           &! the exchange and correlation energy
        vtxc,           &! another exchange-correlation energy
        etxcc,          &! the nlcc exchange and correlation
-       !(additional) the nonlocal core correction (nlcc) exchange and correlation
        ewld,           &! the ewald energy
        elondon,        &! the semi-empirical dispersion energy
        edftd3,         &! the grimme-d3 dispersion energy

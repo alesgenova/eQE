@@ -24,7 +24,6 @@ MODULE dynamics_module
    USE kinds,     ONLY : DP
    USE ions_base, ONLY : amass
    USE io_global, ONLY : stdout
-   USE io_global, ONLY : ionode, ionode_id
    USE io_files,  ONLY : prefix, tmp_dir, seqopn
    USE constants, ONLY : tpi, fpi
    USE constants, ONLY : amu_ry, ry_to_kelvin, au_ps, bohr_radius_cm, ry_kbar

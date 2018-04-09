@@ -144,13 +144,12 @@ SUBROUTINE electrons()
   END IF
   !
   DO idum=1,niter
-    !
-    iter = iter + 1
-    !
-    ! ... Self-consistency loop. For hybrid functionals the exchange potential
-    ! ... is calculated with the orbitals at previous step (none at first step)
-    !
-    
+     !
+     iter = iter + 1
+     !
+     ! ... Self-consistency loop. For hybrid functionals the exchange potential
+     ! ... is calculated with the orbitals at previous step (none at first step)
+     !
      CALL electrons_scf ( printout, exxen )
      !
      IF ( .NOT. dft_is_hybrid() ) RETURN

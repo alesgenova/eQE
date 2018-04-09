@@ -26,7 +26,7 @@
   USE io_files,   ONLY : prefix
   USE epwcom,     ONLY : write_wfn
   USE noncollin_module, ONLY : noncolin
-  USE wannierEPW,    ONLY : seedname2, wvfn_formatted, reduce_unk, ispinw, &
+  USE wannierEPW, ONLY : seedname2, wvfn_formatted, reduce_unk, ispinw, &
                          ikstart, ikstop, iknum
   !
   IMPLICIT NONE
@@ -144,9 +144,8 @@ SUBROUTINE setup_nnkp (  )
                         spin_eig, spin_qaxis
   USE noncollin_module, ONLY : noncolin
   USE constants_epw,    ONLY : bohr
-!  USE w90_parameters,   ONLY : postproc_setup
   USE mp_global,        ONLY : intra_pool_comm, mp_sum
-  USE w90_parameters,   ONLY : postproc_setup
+!  USE w90_parameters,   ONLY : postproc_setup
   USE w90_io,           ONLY : post_proc_flag
   ! 
   implicit none
@@ -410,7 +409,7 @@ SUBROUTINE setup_nnkp (  )
   !
   ! Read data about neighbours
   WRITE(stdout,*)
-  WRITE(stdout,*) ' Reading data about k-point neighbours '
+  WRITE(stdout,*) '    Reading data about k-point neighbours '
   WRITE(stdout,*)
   IF (meta_ionode) THEN
     DO ik=1, iknum
@@ -507,7 +506,7 @@ SUBROUTINE run_wannier
   !
   implicit none
   ! 
-  integer             :: i, ik, ibnd, dummy1, dummy2, ios
+  integer             :: i, ik, ios
   character (len=256) :: tempfile
   character (len=80)  :: line
   !
@@ -962,13 +961,13 @@ SUBROUTINE compute_mmn_para
         ! compute the phase
         !
         phase(:) = (0.d0,0.d0)
-        IF ( ig_(ik_g,ib)>0) phase(dffts%nl(ig_(ik_g,ib)) ) = (1.d0,0.d0)
+        IF ( ig_(ik_g,ib)>0) phase( dffts%nl(ig_(ik_g,ib)) ) = (1.d0,0.d0)
         CALL invfft ('Wave', phase, dffts)
         !
         !  USPP
         !
         IF(any_uspp) THEN
-           CALL init_us_2 (npwq, igkq, xk(1,ikp), vkb)
+           CALL init_us_2 (npwq, igkq, xktot(1,ikp), vkb)
            ! below we compute the product of beta functions with |psi>
            IF (gamma_only) THEN
               CALL calbec ( npwq, vkb, evcq, rbecp2 )
@@ -1036,16 +1035,16 @@ SUBROUTINE compute_mmn_para
               DO ipol=1,2!npol
                  istart=(ipol-1)*npwx+1
                  iend=istart+npw-1
-                 psic_nc(dffts%nl(igk_k (1:npw,ik) ),ipol ) = evc(istart:iend, m)
+                 psic_nc(dffts%nl (igk_k (1:npw,ik) ),ipol ) = evc(istart:iend, m)
                  CALL invfft ('Wave', psic_nc(:,ipol), dffts)
                  psic_nc(1:dffts%nnr,ipol) = psic_nc(1:dffts%nnr,ipol) * &
                                                phase(1:dffts%nnr)
                  CALL fwfft ('Wave', psic_nc(:,ipol), dffts)
-                 aux_nc(1:npwq,ipol) = psic_nc(dffts%nl(igkq(1:npwq) ),ipol )
+                 aux_nc(1:npwq,ipol) = psic_nc(dffts%nl (igkq(1:npwq) ),ipol )
               ENDDO
            ELSE
               psic(:) = (0.d0, 0.d0)
-              psic(dffts%nl(igk_k (1:npw,ik) ) ) = evc (1:npw, m)
+              psic(dffts%nl (igk_k (1:npw,ik) ) ) = evc (1:npw, m)
               IF(gamma_only) psic(dffts%nlm(igk_k (1:npw,ik) ) ) = conjg(evc (1:npw, m))
               CALL invfft ('Wave', psic, dffts)
               psic(1:dffts%nnr) = psic(1:dffts%nnr) * phase(1:dffts%nnr)
@@ -1169,12 +1168,11 @@ SUBROUTINE compute_pmn_para
   USE mp,              ONLY : mp_sum
   USE kinds,           ONLY : DP
   USE klist,           ONLY : xk, nks, igk_k
-  USE wvfct,           ONLY : nbnd, npw, npwx, g2kin
-  USE gvecw,           ONLY : ecutwfc
+  USE wvfct,           ONLY : nbnd, npw, npwx
   USE wavefunctions_module,  ONLY : evc
   USE units_ph,        ONLY : lrwfc, iuwfc
-  USE gvect,           ONLY : g, ngm
-  USE cell_base,       ONLY : tpiba2, tpiba
+  USE gvect,           ONLY : g
+  USE cell_base,       ONLY : tpiba
   USE noncollin_module,ONLY : noncolin
   USE elph2,           ONLY : dmec
   USE constants_epw,   ONLY : czero
@@ -1637,7 +1635,7 @@ SUBROUTINE write_plot
          IF (excluded_band(ibnd)) CYCLE
          ibnd1=ibnd1 + 1
          psic(:) = (0.d0, 0.d0)
-         psic(dffts%nl(igk_k (1:npw,ik) ) ) = evc (1:npw, ibnd)
+         psic(dffts%nl (igk_k (1:npw,ik) ) ) = evc (1:npw, ibnd)
          IF (gamma_only)  psic(dffts%nlm(igk_k (1:npw,ik) ) ) = conjg(evc (1:npw, ibnd))
          CALL invfft ('Wave', psic, dffts)
          IF (reduce_unk) pos=0

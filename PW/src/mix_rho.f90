@@ -11,7 +11,13 @@
 ! This macro force the normalization of betamix matrix, usually not necessary
 !#define __NORMALIZE_BETAMIX
 !
-#if defined(__GFORTRAN__)  
+#if defined(__GFORTRAN__)
+#if (__GNUC__<4) || ((__GNUC__==4) && (__GNUC_MINOR__<8))
+#define __GFORTRAN_HACK
+#endif
+#endif
+
+#if defined(__GFORTRAN_HACK)   
 ! gfortran hack - for some mysterious reason gfortran doesn't save
 !                 derived-type variables even with the SAVE attribute
 MODULE mix_save
@@ -40,7 +46,6 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   USE gvecs,          ONLY : ngms
   USE lsda_mod,       ONLY : nspin
   USE control_flags,  ONLY : imix, ngm0, tr2, io_level
-  USE control_flags,  ONLY : iverbosity
   ! ... for PAW:
   USE uspp_param,     ONLY : nhm
   USE scf,            ONLY : scf_type, create_scf_type, destroy_scf_type, &
@@ -49,17 +54,10 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
                              mix_type_AXPY, davcio_mix_type, rho_ddot, &
                              high_frequency_mixing, &
                              mix_type_COPY, mix_type_SCAL
-  USE scf,            ONLY : charge, scf_type_SCAL, scf_type_COPY
-  USE io_global,      ONLY : ionode, ionode_id
-  USE io_global,      ONLY : stdout
+  USE io_global,     ONLY : stdout
 #if defined(__GFORTRAN_HACK)
   USE mix_save
 #endif
-  USE fde
-  use fde_routines
-
-  use mp,                       only : mp_sum, mp_bcast, mp_max
-  use mp_images,                only : inter_fragment_comm, intra_image_comm
   !
   IMPLICIT NONE
   !
@@ -79,7 +77,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   LOGICAL, INTENT(OUT) :: &
     conv          ! .true. if the convergence has been reached
 
-  type(scf_type), intent(inout)    :: input_rhout
+  type(scf_type), intent(in)    :: input_rhout
   type(scf_type), intent(inout) :: rhoin
   !
   ! ... Here the local variables
@@ -106,7 +104,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   !
   INTEGER, SAVE :: &
     mixrho_iter = 0    ! history of mixing
-#if !defined(__GFORTRAN)
+#if !defined(__GFORTRAN_HACK)
   TYPE(mix_type), ALLOCATABLE, SAVE :: &
     df(:),        &! information from preceding iterations
     dv(:)          !     "  "       "     "        "  "

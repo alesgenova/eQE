@@ -4,7 +4,7 @@ inputs_args = ('atom.in', ''), ('atom-lsda.in',''), ('atom-occ1.in',''), ('atom-
 
 [pw_b3lyp/]
 program = PW
-inputs_args = ('b3lyp-O.in', ''), ('b3lyp-h2o.in','')
+inputs_args = ('b3lyp-O.in', ''), ('b3lyp-h2o.in',''), ('x3lyp-O.in', ''), ('x3lyp-h2o.in','')
 
 [pw_berry/]
 program = PW
@@ -81,6 +81,10 @@ inputs_args = ('scf.in', '1'), ('ph.in', '2'), ('scf_epw.in', '1'), ('nscf_epw.i
 [epw_pl/]
 program = EPW
 inputs_args = ('scf.in', '1'), ('ph.in', '2'), ('scf_epw.in', '1'), ('nscf_epw.in', '1'), ('epw1.in', '3')
+
+[epw_mob/]
+program = EPW
+inputs_args = ('scf.in', '1'), ('ph.in', '2'), ('q2r.in', '4'), ('scf.in', '1'), ('nscf.in', '1'), ('epw1.in', '3'), ('epw2.in', '3'), ('epw3.in', '3')
 
 [tddfpt_CH4/]
 program = TDDFPT
