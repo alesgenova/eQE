@@ -108,12 +108,12 @@ SUBROUTINE iosys()
   USE fft_base, ONLY : dffts
   USE fft_base, ONLY : dfftl
   !
-  USE klist,         ONLY : ltetra, lgauss, ngauss, &     !hack2018
+  USE klist,         ONLY : ltetra, lgauss, ngauss, two_fermi_energies, &
                             smearing_          => smearing, &
                             degauss_           => degauss, &
                             tot_charge_        => tot_charge, &
                             tot_magnetization_ => tot_magnetization
-  USE klist,         ONLY : two_fermi_energies_ => two_fermi_energies
+  !USE klist,         ONLY : two_fermi_energies_ => two_fermi_energies
   USE ktetra,        ONLY : tetra_type
   USE start_k,       ONLY : init_start_k
   !
@@ -317,7 +317,7 @@ SUBROUTINE iosys()
                                space_group, uniqueb, origin_choice,           &
                                rhombohedral, zgate, relaxz, block, block_1,   &
                                block_2, block_height
-  USE input_parameters, ONLY : two_fermi_energies
+  !USE input_parameters, ONLY : two_fermi_energies
   USE input_parameters, ONLY : fde_xc_funct
   !
   ! ... ELECTRONS namelist
@@ -1876,7 +1876,8 @@ endif
   !
   ! ... read the vdw kernel table if needed
   !
-  if (dft_is_nonlocc()) then
+  !if (dft_is_nonlocc()) then
+  if (.false.) then ! disable for now
   if (do_fde) then
         if (trim(fde_xc_funct) == 'SAME' ) then
            inlc = get_inlc()

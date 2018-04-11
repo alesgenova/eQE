@@ -30,7 +30,7 @@ type simulation_cell
   integer, pointer :: gstart
   real(dp), pointer :: gg(:), gl(:), g(:,:)
   integer, pointer :: igtongl(:), mill(:,:), ig_l2g(:), &
-                      sortedig_l2g(:), mill_g(:,:)
+                      mill_g(:,:) ! sortedig_l2g(:), 
   complex(dp), pointer :: eigts1(:,:), eigts2(:,:), eigts3(:,:)
   !
   logical :: is_native_cell  ! is it the supersystem cell or the 
@@ -51,7 +51,7 @@ subroutine new_cell(this, at, bg, omega, alat, celldm, &
                     ngm, ngm_g, ngl, ngmx, &
                     ecutrho, gcutm, & 
                     nl, nlm, gstart, gg, gl, g, &
-                    igtongl, mill, ig_l2g, sortedig_l2g, mill_g, &
+                    igtongl, mill, ig_l2g, mill_g, & ! sortedig_l2g, &
                     eigts1, eigts2, eigts3, &
                     is_native_cell)
  
@@ -67,7 +67,7 @@ subroutine new_cell(this, at, bg, omega, alat, celldm, &
   real(dp), target, intent(in) :: ecutrho, gcutm
   integer, target, intent(in) :: gstart, nl(:), nlm(:)
   integer, target, intent(in) :: igtongl(:), mill(:,:), ig_l2g(:), &
-                                 sortedig_l2g(:), mill_g(:,:)
+                                 mill_g(:,:) !sortedig_l2g(:), 
   real(dp), target, intent(in) :: gg(:), gl(:), g(:,:)
   complex(dp), target, intent(in) :: eigts1(:,:), eigts2(:,:), eigts3(:,:)
   logical, intent(in) :: is_native_cell
@@ -98,7 +98,7 @@ subroutine new_cell(this, at, bg, omega, alat, celldm, &
   this%igtongl => igtongl
   this%mill => mill
   this%ig_l2g => ig_l2g
-  this%sortedig_l2g => sortedig_l2g
+  !this%sortedig_l2g => sortedig_l2g
   this%mill_g => mill_g
   this%gg => gg
   this%gl => gl

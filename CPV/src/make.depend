@@ -515,6 +515,11 @@ fromscra.o : mainvar.o
 fromscra.o : modules.o
 fromscra.o : ortho_base.o
 fromscra.o : printout_base.o
+gradrho.o : ../../FFTXlib/fft_helper_subroutines.o
+gradrho.o : ../../FFTXlib/fft_interfaces.o
+gradrho.o : ../../Modules/cell_base.o
+gradrho.o : ../../Modules/fft_base.o
+gradrho.o : ../../Modules/recvec.o
 gram.o : ../../Modules/electrons_base.o
 gram.o : ../../Modules/gvecw.o
 gram.o : ../../Modules/ions_base.o

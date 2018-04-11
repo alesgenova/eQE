@@ -300,7 +300,25 @@ CONTAINS
   !
   RETURN
  end subroutine mix_type_COPY
- !
+ !----------------------------------------------------------------------------
+ subroutine scf_type_SCAL(A,X)
+  !----------------------------------------------------------------------------
+  ! works like DSCAL for mix_type copy variables :  X = A * X 
+  ! NB: A is a REAL(DP) number
+  USE kinds, ONLY : DP
+  IMPLICIT NONE
+  REAL(DP),       INTENT(IN)    :: A
+  TYPE(scf_type), INTENT(INOUT) :: X
+  X%of_g(:,:)  = A * X%of_g(:,:)
+  X%of_r(:,:)  = A * X%of_r(:,:)
+  if (dft_is_meta() .or. lxdm) X%kin_g = A * X%kin_g
+  if (lda_plus_u_nc) X%ns_nc = A * X%ns_nc
+  if (lda_plus_u_co) X%ns    = A * X%ns
+  if (okpaw)      X%bec= A * X%bec
+  !
+  RETURN
+ end subroutine scf_type_SCAL
+ ! 
  !----------------------------------------------------------------------------
  subroutine mix_type_SCAL (A,X)
   !----------------------------------------------------------------------------

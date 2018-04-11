@@ -132,6 +132,7 @@ CONTAINS
       !
       ! ... Dario Alfe' 1997  and  Carlo Sbraccia 2004-2006
       !
+      use io_global,      only : ionode
       USE ions_base,      ONLY : nat, nsp, ityp, tau, if_pos, atm
       USE cell_base,      ONLY : alat, omega
       USE ener,           ONLY : etot
@@ -1254,6 +1255,7 @@ CONTAINS
    SUBROUTINE print_averages()
       !-----------------------------------------------------------------------
       !
+      use io_global,      only : ionode
       USE control_flags, ONLY : nstep
       USE cell_base,     ONLY : omega, at, alat
       USE ions_base,     ONLY : nat, fixatom

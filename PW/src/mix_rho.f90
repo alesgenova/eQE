@@ -58,6 +58,13 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
 #if defined(__GFORTRAN_HACK)
   USE mix_save
 #endif
+  use io_global, only : ionode, ionode_id
+  use mp,        only : mp_sum, mp_bcast, mp_max
+  use mp_images, only : inter_fragment_comm, intra_image_comm
+  use control_flags, only : iverbosity
+  use scf, only : charge, scf_type_SCAL
+  use fde, only : currfrag, do_fde, dr20, fde_fat, fde_fractional, fde_init_rho, fde_split_mix, dr2max
+  use fde_routines, only : calc_frag_beta
   !
   IMPLICIT NONE
   !
@@ -77,7 +84,7 @@ SUBROUTINE mix_rho( input_rhout, rhoin, alphamix, dr2, tr2_min, iter, n_iter,&
   LOGICAL, INTENT(OUT) :: &
     conv          ! .true. if the convergence has been reached
 
-  type(scf_type), intent(in)    :: input_rhout
+  type(scf_type), intent(inout)    :: input_rhout
   type(scf_type), intent(inout) :: rhoin
   !
   ! ... Here the local variables

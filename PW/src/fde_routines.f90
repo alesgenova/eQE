@@ -152,7 +152,7 @@ SUBROUTINE gen_simulation_cells()
                     igtongl, &
                     mill, &
                     ig_l2g, &
-                    sortedig_l2g, &
+                    !sortedig_l2g, &
                     mill_g, &
                     eigts1, &
                     eigts2, &
@@ -170,7 +170,7 @@ SUBROUTINE gen_simulation_cells()
                     l_igtongl => igtongl, &
                     l_mill => mill, &
                     l_ig_l2g => ig_l2g, &
-                    l_sortedig_l2g => sortedig_l2g, &
+                    !l_sortedig_l2g => sortedig_l2g, &
                     l_mill_g => mill_g, &
                     l_eigts1 => eigts1, &
                     l_eigts2 => eigts2, &
@@ -186,7 +186,7 @@ SUBROUTINE gen_simulation_cells()
            strf=strf, strf_fde=strf_fde, &
            dfftp=dfftp, nl=dfftp%nl, nlm=dfftp%nlm, gstart=gstart, &
            gg=gg, gl=gl, g=g, igtongl=igtongl, mill=mill, &
-           ig_l2g=ig_l2g, sortedig_l2g=sortedig_l2g, mill_g=mill_g, &
+           ig_l2g=ig_l2g, mill_g=mill_g, &
            eigts1=eigts1, eigts2=eigts2, eigts3=eigts3, &
            is_native_cell=.false.)
 
@@ -200,7 +200,7 @@ SUBROUTINE gen_simulation_cells()
            strf=strf_large, strf_fde=strf_fde_large, &
            dfftp=dfftl, nl=dfftl%nl, nlm=dfftl%nlm, gstart=l_gstart, &
            gg=l_gg, gl=l_gl, g=l_g, igtongl=l_igtongl, mill=l_mill, &
-           ig_l2g=l_ig_l2g, sortedig_l2g=l_sortedig_l2g, mill_g=l_mill_g, &
+           ig_l2g=l_ig_l2g, mill_g=l_mill_g, &
            eigts1=l_eigts1, eigts2=l_eigts2, eigts3=l_eigts3, &
            is_native_cell=.true.)
 
@@ -562,7 +562,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
     call set_igcx( -1 )
     call set_igcc( -1 )
     call set_inlc( -1 )
-    call set_dft_from_name( fde_xc_funct, .true. )
+    call set_dft_from_name( fde_xc_funct)
   endif
 
   ! the full system
