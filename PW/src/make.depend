@@ -1267,10 +1267,13 @@ mix_rho.o : ../../Modules/io_global.o
 mix_rho.o : ../../Modules/ions_base.o
 mix_rho.o : ../../Modules/kind.o
 mix_rho.o : ../../Modules/mp_bands.o
+mix_rho.o : ../../Modules/mp_images.o
 mix_rho.o : ../../Modules/recvec.o
 mix_rho.o : ../../Modules/uspp.o
 mix_rho.o : ../../Modules/wavefunctions.o
 mix_rho.o : ../../UtilXlib/mp.o
+mix_rho.o : fde_module.o
+mix_rho.o : fde_routines.o
 mix_rho.o : pwcom.o
 mix_rho.o : scf_mod.o
 move_ions.o : ../../FFTXlib/fft_types.o

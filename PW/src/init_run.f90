@@ -61,6 +61,10 @@ SUBROUTINE init_run()
   !
   CALL data_structure( gamma_only )
   !
+  if (do_fde) then
+    call allocate_fde()
+  endif
+  !
   ! ... print a summary and a memory estimate before starting allocating
   !
   CALL summary()
@@ -106,7 +110,6 @@ SUBROUTINE init_run()
   ! FDE allocation
   !
   if (do_fde) then
-    call allocate_fde
     !
     ! Generate the fde datatypes defining the subsystems in the cells
     !

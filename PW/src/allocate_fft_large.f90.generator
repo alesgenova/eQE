@@ -27,8 +27,10 @@ SUBROUTINE allocate_fft_large
   USE control_flags, ONLY : gamma_only
   USE noncollin_module, ONLY : pointlist, factlist, r_loc, &
       report, i_cons, noncolin, npol
-  USE wavefunctions_module, ONLY : psic, psic_nc
+  USE wavefunctions_module, ONLY : psic_nc
   USE funct,     ONLY: dft_is_meta
+
+  use fde, only : psic => psic_large
   IMPLICIT NONE
   !hack2018 ["allocate_fft", "PW/src/allocate_fft.f90", "subroutine"]
 END SUBROUTINE allocate_fft_large

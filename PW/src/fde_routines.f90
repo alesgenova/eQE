@@ -253,10 +253,6 @@ SUBROUTINE gather_coordinates(vec_frag, vec)
   if (ionode)  call mp_sum(vec, inter_fragment_comm)
   call mp_bcast( vec, ionode_id, intra_image_comm )
 
-
-
-
-
 END SUBROUTINE gather_coordinates
 
 

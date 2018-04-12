@@ -143,6 +143,7 @@ hdf5_qe.o : mp_world.o
 input_parameters.o : kind.o
 input_parameters.o : parameters.o
 input_parameters.o : wannier_new.o
+invmat.o : io_global.o
 invmat.o : kind.o
 io_base.o : ../UtilXlib/mp.o
 io_base.o : kind.o

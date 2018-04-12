@@ -1701,7 +1701,7 @@ endif
   ! ... set up atomic positions and crystal lattice
   !
   if (do_fde) then
-     call cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
+     call large_cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
                         trd_ht, rd_ht, cell_units )
      at(:,1) = atl(:,1) *(frag_cell_split(1)) 
      at(:,2) = atl(:,2) *(frag_cell_split(2)) 
@@ -1719,7 +1719,7 @@ endif
 
   else
      call cell_base_init ( ibrav, celldm, a, b, c, cosab, cosac, cosbc, &
-                        trd_ht, rd_ht, cell_units , linterlock)
+                        trd_ht, rd_ht, cell_units )
   endif
 
   !

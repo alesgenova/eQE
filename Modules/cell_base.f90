@@ -114,7 +114,7 @@
 !------------------------------------------------------------------------------!
 !
   SUBROUTINE cell_base_init( ibrav_, celldm_, a_, b_, c_, cosab_, cosac_, &
-               cosbc_, trd_ht, rd_ht, cell_units_,linterlock_ )
+               cosbc_, trd_ht, rd_ht, cell_units_ )
     !
     ! ... initialize cell_base module variables, set up crystal lattice
     !
@@ -123,17 +123,13 @@
     INTEGER, INTENT(IN) :: ibrav_
     REAL(DP), INTENT(IN) :: celldm_ (6)
     LOGICAL, INTENT(IN) :: trd_ht
-	LOGICAL, INTENT(IN), optional :: linterlock_
     REAL(DP), INTENT(IN) :: rd_ht (3,3)
     CHARACTER(LEN=*), INTENT(IN) :: cell_units_
     REAL(DP), INTENT(IN) :: a_ , b_ , c_ , cosab_, cosac_, cosbc_
-    LOGICAL :: linterlock
 
 
     REAL(DP) :: units
     !
-    linterlock = .false.
-    IF ( PRESENT(linterlock_) ) linterlock = linterlock_
 	!
     IF ( ibrav_ == 0 .and. .not. trd_ht ) THEN
        CALL errore('cell_base_init', 'ibrav=0: must read cell parameters', 1)
@@ -204,7 +200,7 @@
 	 !
      ! To have some peace of mind, in the interlocking cell case force alat to be the same
      ! for both the fragments cells and the supersystem cell.
-     alat = alatl
+     !alat = alatl
      ! for compatibility: celldm still used in phonon etc 
      celldm(1) = alat
      !
@@ -236,7 +232,7 @@
      alat = celldm(1)
 	 ! To have some peace of mind, in the interlocking cell case force alat to be the same
      ! for both the fragments cells and the supersystem cell.
-     alat = alatl
+     !alat = alatl
      at(:,:) = at(:,:) / alat
      !
   END IF
