@@ -1115,7 +1115,7 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
      !  call grad_dot(dfftp%nnr, prodotto, ngm, g, nl, alat, dprodotto)
      !endif
 
-     call fft_graddot(dfftp, rhogsum, g, grho)
+     call fft_graddot(dfftp, prodotto, g, dprodotto)
 
      v(:,ispin) = fac**(-5.d0/3.d0) * (5.d0/3.d0) * Cf * abs(rhoout)**(2.d0/3.d0) * Fs - &
                   fac**(-5.d0/3.d0) * (4.d0/3.d0) * Cf * abs(rhoout)**(2.d0/3.d0) * s * dF_ds - &
@@ -3663,14 +3663,6 @@ do ipol = 1, 3
   offset_s(ipol) = dble(offset(ipol))/dble(nrl(ipol))
 enddo
 
-!write(stdout,*) min_atxyzs(:)
-!write(stdout,*) max_atxyzs(:)
-write(stdout,*) size_atxyzs(:)
-!write(stdout,*) center_atxyzs(:)
-write(stdout,*) offset(:)
-
-
-
 offset_r(:) = s2r(offset_s, atl, alat)
 
 do ia = 1, nat
@@ -3678,16 +3670,21 @@ do ia = 1, nat
 enddo
 !
 !sf
-  if ( split(1) == 1.d0 .and. split(2) == 1.d0 .and. split(3) == 1.d0) then
-!  if (.false.) then
+if ( split(1) == 1.d0 .and. split(2) == 1.d0 .and. split(3) == 1.d0) then
+!if (.false.) then
   do ipol = 1, 3
     shift(ipol) = 0
     offset(ipol) = 0
     tau(ipol,:) = tau_large(ipol,:)
   enddo
   endif
-!sf
-!sf
+
+!write(stdout,*) min_atxyzs(:)
+!write(stdout,*) max_atxyzs(:)
+write(stdout,*) size_atxyzs(:)
+!write(stdout,*) center_atxyzs(:)
+write(stdout,*) offset(:)
+
 RETURN
 
 CONTAINS
