@@ -744,13 +744,8 @@ SUBROUTINE electrons_scf ( printout, exxen )
            ! ... no convergence yet: calculate new potential from mixed
            ! ... charge density (i.e. the new estimate)
            !
-           if (do_fde .and. .not. fde_init_rho ) then
-              CALL v_of_rho( rho, rho_core, rhog_core, &
-                  ehart, etxc, vtxc, eth, etotefield, charge, v)
-            else
-              CALL v_of_rho( rhoin, rho_core, rhog_core, &
-                  ehart, etxc, vtxc, eth, etotefield, charge, v)
-            endif
+            CALL v_of_rho( rhoin, rho_core, rhog_core, &
+                ehart, etxc, vtxc, eth, etotefield, charge, v)
 
            IF (okpaw) THEN
               CALL PAW_potential(rhoin%bec, ddd_paw, epaw,etot_cmp_paw)

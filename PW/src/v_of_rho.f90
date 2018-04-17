@@ -98,6 +98,7 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
 #endif
       else
         CALL v_xc( rho, rho_core, rhog_core, etxc, vtxc, v%of_r )
+        write(stdout,*) "EXC_FRAG ", etxc
       endif
     endif
     v%of_r(:,:) = 0.d0

@@ -512,6 +512,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
                             aux, reduced_cell, NonlocalKernel_fde) ! dfftp, ngm, g, nl, omega, .false.)
     endif
   endif
+  write(stdout,*) "EKIN ", ekin
   v(:,:) = v(:,:) + aux(:,:)
 
   ! the fragment
@@ -520,6 +521,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
   call fde_kin(rho, rho_gauss, rhog_gauss, ekin0, aux_frag, &
                          reduced_cell, NonlocalKernel)
 !                         dfftp, ngm, g, nl, omega, .false.)
+write(stdout,*) "EKIN_FRAG ", ekin0
   v(:,:) = v(:,:) - aux_frag(:,:)
 !  aux = aux-aux_frag
 ! verbose
@@ -645,6 +647,7 @@ SUBROUTINE fde_nonadditive(rho, rho_fde, rho_core, rhog_core, rho_core_fde, &
   !write(stdout, *) "etxc = ", etxc
   !write(stdout, *) "vtxc = ", trash
   !write(stdout, *) "vsum = ", sum(aux(:,:))
+  write(stdout,*) "EXC ", etxc
   v(:,:) = v(:,:) + aux(:,:)
 
   ! the fragment
@@ -1004,12 +1007,12 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
   real(dp), parameter :: Cs = 1.d0 / (2.d0 * (3.d0*pi*pi) ** (1.d0/3.d0))
   real(dp), parameter :: epsr = 1d-8, epsg = 1d-10
   !----------------------------------------------------------------------------
-  type(fft_type_descriptor) , pointer :: dfftp
-  real(dp), pointer :: g(:,:)
-  integer, pointer :: nl(:)
-  integer :: ngm
-  real(dp) :: omega
-  logical :: llarge
+  !type(fft_type_descriptor) , pointer :: dfftp
+  !real(dp), pointer :: g(:,:)
+  !integer, pointer :: nl(:)
+  !integer :: ngm
+  !real(dp) :: omega
+  !logical :: llarge
   !
   real(dp), allocatable :: s(:), Fs(:), dF_dS(:), grho(:,:), rhoout(:)
   real(dp), allocatable :: prodotto(:,:), dprodotto(:), mod_grho(:)
@@ -1017,19 +1020,22 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
   real(dp) :: domega, fac
   integer :: i, ispin, nspin0
 
+
+  associate( &
+    dfftp => cell%dfftp, &
+    ngm => cell%ngm, &
+    nl => cell%nl, &
+    g => cell%g, &
+    omega => cell%omega, &
+    tpiba => cell%tpiba, &
+    llarge => cell%is_native_cell &
+  )
+
   ! TODO: non-collinear
   nspin0 = nspin
   if (nspin == 4) nspin0 = 1
   if (nspin==4 .and. domag) nspin0 = 2
   fac = 1.d0 / dble(nspin0)
-
-
-  dfftp => cell%dfftp
-  g => cell%g
-  nl => cell%nl
-  ngm = cell%ngm
-  omega = cell%omega
-  llarge = cell%is_native_cell
 
   ! allocate memory
   allocate( s(dfftp%nnr), Fs(dfftp%nnr), dF_ds(dfftp%nnr) )
@@ -1139,6 +1145,8 @@ SUBROUTINE fde_kin_gga(rho, rho_core, rhog_core, ene, v, funct, cell)!dfftp, ngm
 !  call mp_sum(ene, intra_bgrp_comm)
   call mp_sum(ene, dfftp%comm)
   !call mp_sum(vrho, intra_bgrp_comm)
+
+  end associate
 
   return
 
@@ -1832,49 +1840,38 @@ SUBROUTINE update_rho_fde (density, total)
         do is=1,fde_nspin
            !
            call gather_grid( dfftp,rho_fde%of_r(:,is), raux)
-           if (linterlock) then
-             if (ionode) then
-               rauxl = 0.d0
-               rauxl(f2l(:)) = raux(:)
-               call mp_sum(rauxl, inter_fragment_comm)
-               if (.not. fde_dotsonlarge .or. fde_overlap) then
-                 raux = 0.d0
-                 raux(:) = rauxl(f2l(:))
-               endif
-             endif
-             !
-             call scatter_grid( dfftl,rauxl, rho_fde_large%of_r(:,is))
+            if (ionode) then
+              rauxl = 0.d0
+              rauxl(f2l(:)) = raux(:)
+              call mp_sum(rauxl, inter_fragment_comm)
+              if (.not. fde_dotsonlarge .or. fde_overlap) then
+                raux = 0.d0
+                raux(:) = rauxl(f2l(:))
+              endif
+            endif
+            !
+            call scatter_grid( dfftl,rauxl, rho_fde_large%of_r(:,is))
 
-             gauxl(:) = cmplx(rho_fde_large%of_r(:,is), 0.d0, kind=dp)
-             call fwfft ('Rho', gauxl, dfftl)
-             rho_fde_large%of_g(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
-             !
-             if (.not. fde_dotsonlarge .or. fde_overlap) then
-               call scatter_grid( dfftp,raux, rho_fde%of_r(:,is))
-               gaux(:) = cmplx(rho_fde%of_r(:,is), 0.d0, kind=dp)
-               call fwfft ('Rho', gaux, dfftp)
-               rho_fde%of_g(1:ngm,is) = gaux(dfftp%nl(1:ngm))
-             endif
-             !
-           else
-             !
-             ! it's now always interlock!
-             !if (ionode) call mp_sum(raux, inter_fragment_comm)
-             !call scatter_grid( dfftp,raux, rho_fde%of_r(:,is))
-             !call c_grid_gather_sum_scatter(rho_fde%of_g(:,is))
-           endif
+            gauxl(:) = cmplx(rho_fde_large%of_r(:,is), 0.d0, kind=dp)
+            call fwfft ('Rho', gauxl, dfftl)
+            rho_fde_large%of_g(1:ngml,is) = gauxl(dfftl%nl(1:ngml))
+            !
+            if (.not. fde_dotsonlarge .or. fde_overlap) then
+              call scatter_grid( dfftp,raux, rho_fde%of_r(:,is))
+              gaux(:) = cmplx(rho_fde%of_r(:,is), 0.d0, kind=dp)
+              call fwfft ('Rho', gaux, dfftp)
+              rho_fde%of_g(1:ngm,is) = gaux(dfftp%nl(1:ngm))
+            endif
+            !
            !
         end do
         !
         if (ionode) deallocate(raux)
         !
-        if (linterlock) then
-          deallocate(gaux, gauxl)
-          if (ionode) deallocate(rauxl)
-        endif
+        deallocate(gaux, gauxl)
+        if (ionode) deallocate(rauxl)
      else
         if (iverbosity>10) write(stdout,*) 'PARTIAL FDE DENSITY UPDATE'
-        if (linterlock) then
         if (fancy_parallel_) call errore('update_rho_fde','partial density update can only be combined with -nfp',1)
         allocate(rho_old_large(dfftl%nnr,fde_frag_nspin)) ! to hold rho_old on large grid
         allocate(density_large(dfftl%nnr,fde_frag_nspin)) ! to hold density on large grid
@@ -1897,17 +1894,6 @@ SUBROUTINE update_rho_fde (density, total)
            rho_fde_large%of_g(1:ngml,is)=gauxl(dfftl%nl(1:ngml))
         enddo
         deallocate(rho_old_large,density_large,gauxl)
-        else ! linterlock
-        if (fde_frag_nspin == fde_nspin) then
-           rho_fde%of_r = rho_fde%of_r - rho_old%of_r + density%of_r
-           rho_fde%of_g = rho_fde%of_g - rho_old%of_g + density%of_g
-        else
-           rho_fde%of_r(:,1) = rho_fde%of_r(:,1) - 0.5_dp * (rho_old%of_r(:,1) - density%of_r(:,1))
-           rho_fde%of_r(:,2) = rho_fde%of_r(:,2) - 0.5_dp * (rho_old%of_r(:,1) - density%of_r(:,1))
-           rho_fde%of_g(:,1) = rho_fde%of_g(:,1) - 0.5_dp * (rho_old%of_g(:,1) - density%of_g(:,1))
-           rho_fde%of_g(:,2) = rho_fde%of_g(:,2) - 0.5_dp * (rho_old%of_g(:,1) - density%of_g(:,1))
-        endif
-        endif ! linterlock
      end if
 
    call stop_clock('update_rho')
