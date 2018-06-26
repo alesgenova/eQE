@@ -4641,7 +4641,7 @@ ia32:path* | ia64:path* | x86_64:path* )
 *:*gfortran )
 	try_fflags="-O3 -g"
         if test "$use_debug" -eq 1; then
-            try_fflags="-O3 -g  -Wall -fbounds-check -frange-check"
+            try_fflags="-O3 -g  -Wall -fbounds-check -frange-check -finit-integer=987654321 -finit-real=nan -finit-logical=true -finit-character=64"
         fi
         if test "$use_pedantic" -eq 1; then
             try_fflags="-O2 -g -pedantic -Wall -Wextra -Wconversion -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all"
@@ -4649,8 +4649,8 @@ ia32:path* | ia64:path* | x86_64:path* )
         try_fflags_openmp="-fopenmp"
         try_f90flags="\$(FFLAGS) -x f95-cpp-input"
         try_fflags_noopt="-O0 -g"
-        try_ldflags="-g -pthread"
-        try_ldflags_openmp="-fopenmp"
+        try_ldflags="-g"
+        try_ldflags_openmp="-pthread -fopenmp"
         try_ldflags_static="-static"
         ;;
 crayxt*:cray* )

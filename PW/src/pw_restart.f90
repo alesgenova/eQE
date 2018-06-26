@@ -49,7 +49,7 @@ MODULE pw_restart
   !
   USE io_files,  ONLY : tmp_dir, prefix, iunpun, xmlpun, delete_if_present, &
                         qexml_version, qexml_version_init, pseudo_dir,      &
-                        create_directory
+                        create_directory, postfix
   !
   USE io_global, ONLY : ionode, ionode_id
   USE mp_images, ONLY : intra_image_comm
@@ -225,7 +225,7 @@ MODULE pw_restart
       CALL errore( 'pw_writefile ', &
                    'no free units to write wavefunctions', ierr )
       !
-      dirname = TRIM( tmp_dir ) // TRIM( prefix ) // '.save/'
+      dirname = TRIM( tmp_dir ) // TRIM( prefix ) // postfix
       !
       ! ... create the main restart directory
       !
@@ -860,7 +860,7 @@ MODULE pw_restart
       !
       ierr = 0
       !
-      dirname = TRIM( tmp_dir ) // TRIM( prefix ) // '.save/'
+      dirname = TRIM( tmp_dir ) // TRIM( prefix ) // postfix
       !
       ! ... look for an empty unit
       !
@@ -3082,7 +3082,7 @@ MODULE pw_restart
       LOGICAL            :: lval, found, back_compat
       !
       !
-      dirname  = TRIM( tmp_dir ) // TRIM( prefix ) // '.save/'
+      dirname  = TRIM( tmp_dir ) // TRIM( prefix ) // postfix
       filename = TRIM( dirname ) // TRIM( xmlpun )
       !
       IF ( ionode ) &

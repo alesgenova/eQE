@@ -30,6 +30,7 @@ SUBROUTINE data_structure( gamma_only )
   use fde,        only : do_fde, linterlock
   use io_global,  only : stdout!, flush_unit
   USE gvecw,      ONLY : gcutw, gkcut
+  USE realus,     ONLY : real_space
   USE io_global,  ONLY : stdout, ionode
   !
   IMPLICIT NONE
@@ -64,7 +65,8 @@ SUBROUTINE data_structure( gamma_only )
   !
   ! ... set up fft descriptors, including parallel stuff: sticks, planes, etc.
   !
-  dffts%has_task_groups = (ntask_groups >1)
+  ! task group are disabled if real_space calculation of calbec is used
+  dffts%has_task_groups = (ntask_groups >1) .and. .not. real_space
   CALL fft_type_init( dffts, smap, "wave", gamma_only, lpara, intra_bgrp_comm, at, bg, gkcut, gcutms/gkcut, nyfft=nyfft )
   CALL fft_type_init( dfftp, smap, "rho" , gamma_only, lpara, intra_bgrp_comm, at, bg, gcutm , 4.d0, nyfft=nyfft )
   ! define the clock labels ( this enables the corresponding fft too ! )

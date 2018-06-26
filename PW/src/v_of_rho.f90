@@ -84,6 +84,9 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
         CALL v_xc( rho, rho_core, rhog_core, etxc, vtxc, v%of_r )
       endif
     endif
+  !
+  if (dft_is_meta() .and. (get_meta() /= 4)) then
+     call v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v%of_r, v%kin_r )
   else
     etxc = 0.d0
     ! FDE: if fde_kin_funct = SAME only calculate the fragment etxc explicitly
@@ -104,6 +107,7 @@ SUBROUTINE v_of_rho( rho, rho_core, rhog_core, &
     v%of_r(:,:) = 0.d0
     vtxc = 0.d0
   endif
+  !
   !
   ! ... add a magnetic field  (if any)
   !
@@ -177,7 +181,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   USE lsda_mod,         ONLY : nspin
   USE cell_base,        ONLY : omega
   USE spin_orb,         ONLY : domag
-  USE funct,            ONLY : xc, xc_spin, tau_xc, tau_xc_spin, get_meta
+  USE funct,            ONLY : xc, xc_spin, tau_xc, tau_xc_spin, get_meta, dft_is_nonlocc, nlc
   USE scf,              ONLY : scf_type
   USE mp,               ONLY : mp_sum
   USE mp_bands,         ONLY : intra_bgrp_comm
@@ -189,7 +193,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
     ! the core charge in real space
   COMPLEX(DP), INTENT(IN) :: rhog_core(ngm)
     ! the core charge in reciprocal space
-  REAL(DP), INTENT(OUT) :: v(dfftp%nnr,nspin), kedtaur(dfftp%nnr,nspin), &
+  REAL(DP), INTENT(INOUT) :: v(dfftp%nnr,nspin), kedtaur(dfftp%nnr,nspin), &
                            vtxc, etxc
     ! v:      V_xc potential
     ! kedtau: local K energy density 
@@ -315,7 +319,7 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
           !
           ! h contains D(rho*Exc)/D(|grad rho|) * (grad rho) / |grad rho|
           !
-          if (get_meta()==1 .OR.get_meta()==5 ) then  ! tpss, scan
+          if (get_meta()==1 .OR. get_meta()==5 ) then  ! tpss, scan
             !
             h(:,k,1) = (v2xup * grhoup(:) + v2cup(:)) * e2
             h(:,k,2) = (v2xdw * grhodw(:) + v2cdw(:)) * e2
@@ -377,6 +381,8 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   vtxc = omega * vtxc / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 ) 
   etxc = omega * etxc / ( dfftp%nr1*dfftp%nr2*dfftp%nr3 )
   !
+  IF ( dft_is_nonlocc() ) CALL nlc( rho%of_r, rho_core, nspin, etxc, vtxc, v )
+  !
   CALL mp_sum(  vtxc , intra_bgrp_comm )
   CALL mp_sum(  etxc , intra_bgrp_comm )
   !
@@ -384,6 +390,8 @@ SUBROUTINE v_xc_meta( rho, rho_core, rhog_core, etxc, vtxc, v, kedtaur )
   DEALLOCATE(h)
   DEALLOCATE(rhoout)
   DEALLOCATE(rhogsum)
+  !
+  CALL stop_clock( 'v_xc_meta' )
   !
   RETURN
   !
